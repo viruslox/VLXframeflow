@@ -15,7 +15,7 @@ mobile applications.
     Automatically sets up Debian repositories (**testing**,
     **multimedia**), installs essential packages like **ffmpeg**,
     **gpsd**, and **v4l-utils**, and creates a dedicated user for
-    running the services securely.
+    running the services.
 -   ****NVMe OS Installer (******nvme_installer.sh******):**** A utility
     to partition, format, and clone the existing operating system to a
     high-speed NVMe drive, including correct **fstab** and boot
