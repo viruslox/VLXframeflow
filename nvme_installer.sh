@@ -138,10 +138,11 @@ mount "${CHOSEN_DEVICE}p1" "${TEMP_MOUNT}/boot/firmware"
 
 echo "[INFO] Cloning the current OS to $CHOSEN_DEVICE."
 if [ "$SKIP_PARTITIONING" = true ]; then
-    rsync -aAXv --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost-found", "/home/*"} / "$TEMP_MOUNT/"
+    $excluded_fld={'/dev/*','/proc/*','/sys/*','/tmp/*','/run/*','/mnt/*','/media/*','/lost-found', '/home/*'}"
 else
-    rsync -aAXv --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost-found"} / "$TEMP_MOUNT/"
+    $excluded_fld={'/dev/*','/proc/*','/sys/*','/tmp/*','/run/*','/mnt/*','/media/*','/lost-found'}"
 fi
+rsync -aAXv --exclude=$excluded_fld / "$TEMP_MOUNT/" --delete
 if [ $? -ne 0 ]; then echo "[ERR]: OS cloning with rsync failed."; exit 1; fi
 sync
 echo "[OK]: OS cloning complete."
