@@ -136,7 +136,7 @@ elif [[ "$CHOICE" =~ ^[0-9]+$ ]] || [ "$CHOICE" -ge "${#userlist[@]}" ]; then
 else
 	answnewuser=${userlist[$CHOICE]}
 fi
-usermod -a -G crontab,dialout,tty,video,audio,plugdev,netdev,i2c,bluetooth,pipewire $answnewuser
+usermod -a -G crontab,dialout,tty,video,audio,plugdev,netdev,i2c,bluetooth $answnewuser
 loginctl enable-linger $answnewuser
 mkdir -p /opt/VLXframeflow
 chown -Rf $answnewuser:$answnewuser /opt/VLXframeflow
