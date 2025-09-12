@@ -94,7 +94,7 @@ Types: deb
 URIs: https://www.deb-multimedia.org/
 Suites: testing
 Components: main non-free
-Signed-By: /etc/apt/trusted.gpg.d/deb-multimedia-keyring.asc
+Signed-By: /usr/share/keyrings/deb-multimedia-keyring.pgp
 EOF
 
 apt --fix-broken install
