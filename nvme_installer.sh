@@ -63,7 +63,14 @@ else
 fi
 
 ## Yeah it's probably not necessary at all
-umount ${CHOSEN_DEVICE}* &>/dev/null
+while mount | grep -q "${CHOSEN_DEVICE}"; do
+    echo "Found active mounts. Unmounting..."
+    for mount_point in $(mount | grep "${CHOSEN_DEVICE}" | awk '{print $3}' | sort -r); do
+        echo "Attempting to unmount: $mount_point"
+        umount "$mount_point"
+    done
+    sleep 1
+done
 
 if [ "$SKIP_PARTITIONING" = false ]; then
 	read -p "We are about to COMPLETELY WIPE $CHOSEN_DEVICE type 'ok' and press <Enter>: " FINAL_CONFIRM
@@ -94,9 +101,6 @@ EOF
 	echo "[OK]: Partitioning of $CHOSEN_DEVICE complete."
 fi
 
-# =======================================================
-# Sezione di formattazione corretta
-# =======================================================
 echo "Formatting partitions"
 
 mkfs.vfat -F 32 -n EFI "${CHOSEN_DEVICE}p1"
@@ -117,9 +121,6 @@ if [ "$SKIP_PARTITIONING" = false ]; then
 else
 	echo "[INFO]: Skipping /home formatting to preserve data."
 fi
-# =======================================================
-# Fine della sezione di formattazione corretta
-# =======================================================
 
 echo "[OK]: Formatting complete:"
 lsblk -f $CHOSEN_DEVICE
