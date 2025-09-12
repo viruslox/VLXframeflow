@@ -9,43 +9,39 @@ This project is ideal for transforming single-board computers or other
 embedded hardware into dedicated streaming and tracking devices for
 mobile applications.
 
-## Key Features
+## Components
 
--   ****System Configuration (******system_configuration.sh******):****
-    Automatically sets up Debian repositories (**testing**,
-    **multimedia**), installs essential packages like **ffmpeg**,
-    **gpsd**, and **v4l-utils**, and creates a dedicated user for
-    running the services.
 -   ****NVMe OS Installer (******nvme_installer.sh******):**** A utility
     to partition, format, and clone the existing operating system to a
     high-speed NVMe drive, including correct **fstab** and boot
     configuration. ****(Warning: This script will wipe the selected
     drive).****
+-   ****System Configuration (******system_configuration.sh******):****
+    Automatically sets up Debian repositories (**testing**,
+    **multimedia**), installs essential packages like **ffmpeg**,
+    **gpsd**, and **v4l-utils**, and creates a dedicated user for
+    running the services.
 -   ****Camera Streaming (******cameraman.sh******):**** Manages
     multiple video camera streams using **ffmpeg**. It can handle
     multiple V4L2 devices, capture audio, and stream the output to a
     configured RTSP URL.
 -   ****GPS Tracking (******gps_tracker.sh******):**** Manages the
     **gpsd** service to read data from a connected GPS device (like a
-    USB GPS module).
--   ****GPS API Client (******gps_api.sh******):**** Fetches the current
-    speed from the **gpsd** service and sends it as a JSON payload to a
-    specified API endpoint.
--   ****Centralized Configuration:**** Uses a simple
-    **\~/.frameflow_profile** file for easy configuration of RTSP URLs,
-    enabled devices, and API endpoints.
+    USB GPS module) and sends it as a video source to a
+    specified RTSP relay.
 
-## Installation and Setup
 
-Follow these steps to get VLXframeflow up and running on a fresh
-Debian-based system.
+## Installation and Update
 
-### Step 1: System Configuration (Run as root)
+### Step 1: (Optional) Install OS on NVMe (Run as root)
+If you want to run your operating system from a faster NVMe drive, this
+script will automate the entire process.
 
-First, you need to prepare the system by running the configuration
-script. This only needs to be done once.
+****WARNING:**** This script will completely erase all data on the NVMe
+drive you select. Proceed with caution.
 
-**sudo ./system_configuration.sh**
+### Step 2: System Configuration (Run as root)
+/system_configuration.sh
 
 This script will:
 
@@ -55,32 +51,10 @@ This script will:
 3.  Prompt you to select an existing user or create a new dedicated user
     (**frameflow** by default) to run the services.
 
-### Step 2: (Optional) Install OS on NVMe (Run as root)
-
-If you want to run your operating system from a faster NVMe drive, this
-script will automate the entire process.
-
-****WARNING:**** This script will completely erase all data on the NVMe
-drive you select. Proceed with caution.
-
-**sudo ./nvme_installer.sh**
-
 ### Step 3: Initial Script Setup (Run as the dedicated user)
 
-Log in as the user you selected or created in Step 1. Then, run the main
+Log in as the user you selected or created in Step 2. Then, run the main
 **frameflow.sh** script to create the initial configuration file.
-
-**\# Switch to the dedicated user if you aren\'t already**
-
-**su - frameflow**
-
-**\# Navigate to the project directory**
-
-**cd /opt/VLXframeflow**
-
-**\# Run the setup script**
-
-**./frameflow.sh**
 
 ### Step 4: Edit the Configuration File
 
@@ -108,6 +82,7 @@ found, 2 only the first 2 devices found\...**
 **\# The API endpoint for sending GPS data**
 
 **API_URL=\"\[http://your-api-server.com:3000/update-gps\](http://your-api-server.com:3000/update-gps)\"**
+
 
 ## Usage
 
@@ -141,15 +116,6 @@ data.
 **\# Check the status**
 
 **./gps_tracker.sh status**
-
-**\# Start sending GPS data to your API (this will run in the
-foreground)**
-
-**./gps_api.sh**
-
-**\# Stop the gpsd service**
-
-**./gps_tracker.sh stop**
 
 ## Future Development (To-Do)
 
