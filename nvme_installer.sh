@@ -1,8 +1,8 @@
 #!/bin/bash
 
 if [ "$EUID" -ne 0 ]; then
-  echo "[ERR]: This script requires root privileges. Please run it as root or use sudo."
-  exit 1
+  echo "[ERR]: This script requires root privileges. Please run it as root or use sudo."
+  exit 1
 fi
 
 # Find all NVMe devices and store them in an array
@@ -11,16 +11,16 @@ mapfile -t DEVICES < <(lsblk -p -d -n -o NAME | grep 'nvme')
 
 # Check if any NVMe devices were found
 if [ ${#DEVICES[@]} -eq 0 ]; then
-    echo "[INFO]: No NVMe devices found. Exit."
-    exit 0
+    echo "[INFO]: No NVMe devices found. Exit."
+    exit 0
 fi
 
-echo "The following NVMe drives were found. Please select one to partition."
+echo "The following NVMe drives were found. Please select one."
 echo "Please note that proceeding will WIPE THE ENTIRE SELECTED DRIVE."
 echo ""
 
 for i in "${!DEVICES[@]}"; do
-    echo "[$i] ${DEVICES[$i]}"
+    echo "[$i] ${DEVICES[$i]}"
 done
 echo "[X] Cancel operation and Quit"
 echo ""
@@ -28,14 +28,14 @@ read -p "Enter your choice and press <Enter>: " CHOICE
 
 # Handle quitting
 if [[ "$CHOICE" =~ ^[xX]$ ]]; then
-    echo "[INFO]: Operation cancelled by user. Exit."
-    exit 0
+    echo "[INFO]: Operation cancelled by user. Exit."
+    exit 0
 fi
 
 # Handle invalid (non-numeric or out-of-bounds) input
 if ! [[ "$CHOICE" =~ ^[0-9]+$ ]] || [ "$CHOICE" -ge "${#DEVICES[@]}" ]; then
-    echo "[ERR]: Invalid selection. Please enter a number from the list."
-    exit 1
+    echo "[ERR]: Invalid selection. Please enter a number from the list."
+    exit 1
 fi
 
 if [ ! -b "${DEVICES[$CHOICE]}" ]; then
@@ -43,44 +43,64 @@ if [ ! -b "${DEVICES[$CHOICE]}" ]; then
 	exit 1
 else
 	CHOSEN_DEVICE="${DEVICES[$CHOICE]}"
+	CURRENT_LAYOUT=$(sfdisk -d "$CHOSEN_DEVICE" 2>/dev/null)
 fi
 
-# ==============================================================================
-# - p1: 1G   EFI System
-# - p2: 1G   Linux filesystem (/boot)
-# - p3: 4G   Linux swap
-# - p4: remaining drive space (/)
-# ==============================================================================
+if echo "$CURRENT_LAYOUT" | grep -q 'label: gpt' && \
+   echo "$CURRENT_LAYOUT" | grep -q 'type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B' && \
+   echo "$CURRENT_LAYOUT" | grep -q 'type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F' && \
+   echo "$CURRENT_LAYOUT" | grep -c 'type=0FC63DAF-8483-4772-8E79-3D69D8477DE4' -ge 3; then
 
-read -p "We are about to COMPLETELY WIPE $CHOSEN_DEVICE type 'ok' and press <Enter>: " FINAL_CONFIRM
-
-if [ "$FINAL_CONFIRM" != "ok" ]; then
-    echo "[INFO]: Operation cancelled by user."
-    exit 0
+    echo "Found VLXframeflow compatible partition scheme in $CHOSEN_DEVICE."
+    read -r -p "Do You wish to skeep re-partitioning and keep /home data? (y/N) " response
+    
+    case "$response" in
+        [yY])
+            SKIP_PARTITIONING=true
+            ;;
+        *)
+            SKIP_PARTITIONING=false
+            ;;
+    esac
+else
+    SKIP_PARTITIONING=false
 fi
 
-echo "--> Starting non-interactive partitioning on $CHOSEN_DEVICE..."
-# Unmount any partitions on the device, just in case
+## Yeah it's probably not necessary at all
 umount ${CHOSEN_DEVICE}* &>/dev/null
 
-sfdisk "$CHOSEN_DEVICE" << EOF
-label: gpt
-,size=1G,type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B # Partition 1: EFI System
-,size=1G,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4 # Partition 2: Linux filesystem
-,size=4G,type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F # Partition 3: Linux swap
-,      ,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4 # Partition 4: Linux filesystem (rest of disk)
-EOF
+if [ "$SKIP_PARTITIONING" = false ]; then
+	read -p "We are about to COMPLETELY WIPE $CHOSEN_DEVICE type 'ok' and press <Enter>: " FINAL_CONFIRM
 
-if [ $? -ne 0 ]; then
-    echo "[ERR]: Partitioning $CHOSEN_DEVICE failed."
-    exit 1
+	if [ "$FINAL_CONFIRM" != "ok" ]; then
+		echo "[INFO]: Operation cancelled by user."
+		exit 0
+	fi
+
+	echo "--> Starting non-interactive partitioning on $CHOSEN_DEVICE..."
+
+    sfdisk "$CHOSEN_DEVICE" << EOF
+label: gpt
+,size=1G,type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B,name="EFI System" # Partizione 1: EFI System
+,size=1G,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux boot" # Partizione 2: Linux boot
+,size=4G,type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F,name="Linux swap" # Partizione 3: Linux swap
+,size=44G,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux root" # Partizione 4: Linux root (44 GB)
+,      ,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux home" # Partizione 5: Linux home (resto del disco)
+EOF
+	if [ $? -ne 0 ]; then
+		echo "[ERR]: Partitioning $CHOSEN_DEVICE failed."
+		exit 1
+	fi
+
+	# Force kernel to re-read partition table
+	partprobe "$CHOSEN_DEVICE"
+	sleep 2
+	echo "[OK]: Partitioning of $CHOSEN_DEVICE complete."
 fi
 
-# Force kernel to re-read partition table
-partprobe "$CHOSEN_DEVICE"
-sleep 2
-echo "[OK]: Partitioning of $CHOSEN_DEVICE complete."
-
+# =======================================================
+# Sezione di formattazione corretta
+# =======================================================
 echo "Formatting partitions"
 
 mkfs.vfat -F 32 -n EFI "${CHOSEN_DEVICE}p1"
@@ -89,11 +109,21 @@ if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p1 [vfat]"; exi
 mkfs.ext4 -L boot "${CHOSEN_DEVICE}p2"
 if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p2 [ext4]"; exit 1; fi
 
+mkfs.ext4 -L root "${CHOSEN_DEVICE}p4"
+if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p4 [ext4]"; exit 1; fi
+
 mkswap -L swap "${CHOSEN_DEVICE}p3"
 if [ $? -ne 0 ]; then echo "[ERR]: Swap creation failed on p3"; exit 1; fi
 
-mkfs.ext4 -L root "${CHOSEN_DEVICE}p4"
-if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p4 [ext4]"; exit 1; fi
+if [ "$SKIP_PARTITIONING" = false ]; then
+	mkfs.ext4 -L home "${CHOSEN_DEVICE}p5"
+	if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p5 [ext4]"; exit 1; fi
+else
+	echo "[INFO]: Skipping /home formatting to preserve data."
+fi
+# =======================================================
+# Fine della sezione di formattazione corretta
+# =======================================================
 
 echo "[OK]: Formatting complete:"
 lsblk -f $CHOSEN_DEVICE
@@ -102,13 +132,20 @@ echo "[INFO]: Starting OS installation in $CHOSEN_DEVICE"
 TEMP_MOUNT="/mnt/temp"
 mkdir -p "$TEMP_MOUNT"
 mount "${CHOSEN_DEVICE}p4" "$TEMP_MOUNT"
+mkdir -p "$TEMP_MOUNT/home"
+mount "${CHOSEN_DEVICE}p5" "$TEMP_MOUNT/home"
 mkdir -p "${TEMP_MOUNT}/boot"
 mount "${CHOSEN_DEVICE}p2" "${TEMP_MOUNT}/boot"
 mkdir -p "${TEMP_MOUNT}/boot/efi" "${TEMP_MOUNT}/boot/firmware"
 mount "${CHOSEN_DEVICE}p1" "${TEMP_MOUNT}/boot/efi"
+mount "${CHOSEN_DEVICE}p1" "${TEMP_MOUNT}/boot/firmware"
 
 echo "[INFO] Cloning the current OS to $CHOSEN_DEVICE."
-rsync -aAXv --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} / "$TEMP_MOUNT/"
+if [ "$SKIP_PARTITIONING" = true ]; then
+    rsync -aAXv --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost-found", "/home/*"} / "$TEMP_MOUNT/"
+else
+    rsync -aAXv --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost-found"} / "$TEMP_MOUNT/"
+fi
 if [ $? -ne 0 ]; then echo "[ERR]: OS cloning with rsync failed."; exit 1; fi
 sync
 echo "[OK]: OS cloning complete."
@@ -118,12 +155,11 @@ P1UUID=$(lsblk -f -n -o UUID "${CHOSEN_DEVICE}p1")
 P2UUID=$(lsblk -f -n -o UUID "${CHOSEN_DEVICE}p2")
 P3UUID=$(lsblk -f -n -o UUID "${CHOSEN_DEVICE}p3")
 P4UUID=$(lsblk -f -n -o UUID "${CHOSEN_DEVICE}p4")
+P5UUID=$(lsblk -f -n -o UUID "${CHOSEN_DEVICE}p5")
 
-umount $TEMP_MOUNT/boot/firmware
-rm $TEMP_MOUNT/boot/firmware
-mount ${CHOSEN_DEVICE}p1 $TEMP_MOUNT/boot/efi/
-cd $TEMP_MOUNT/boot/
-ln -sf efi firmware
+umount "${TEMP_MOUNT}/boot/firmware"
+rmdir "${TEMP_MOUNT}/boot/firmware"
+ln -sf "${TEMP_MOUNT}/boot/efi" "${TEMP_MOUNT}/boot/firmware"
 
 cd $TEMP_MOUNT
 cp -p ${TEMP_MOUNT}/boot/efi/cmdline.txt ${TEMP_MOUNT}/boot/efi/cmdline.txt.BK
@@ -135,11 +171,13 @@ echo "proc /proc proc defaults 0 0" > "$FSTAB_FILE"
 echo "UUID=$P1UUID /boot/efi vfat defaults 0 2" >> "$FSTAB_FILE"
 echo "UUID=$P2UUID /boot ext4 defaults 0 2" >> "$FSTAB_FILE"
 echo "UUID=$P4UUID / ext4 errors=remount-ro 0 1" >> "$FSTAB_FILE"
+echo "UUID=$P5UUID /home ext4 defaults 0 2" >> "$FSTAB_FILE"
 echo "UUID=$P3UUID none swap sw 0 0" >> "$FSTAB_FILE"
 
 sync
 umount $TEMP_MOUNT/boot/efi/
 umount $TEMP_MOUNT/boot/
+umount $TEMP_MOUNT/home/
 umount $TEMP_MOUNT/
 sync
 
