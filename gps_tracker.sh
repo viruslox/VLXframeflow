@@ -142,16 +142,32 @@ stop_speedsender() {
 }
 
 start_gpsd() {
-	if [ -z "$device" ]; then
-		echo "[ERR] No GPS device found. Exiting."
-		exit 1
-	fi
-	echo "Launching gpsd in background..."
-	GPSD_CMD="$GPSD -P $PID_FILE -D5 -N -n -S $GPSPORT $device"
+    if [ -z "$device" ]; then
+        echo "[ERR] No GPS device found. Exiting."
+        exit 1
+    fi
+
+    echo "Launching gpsd in background..."
+    GPSD_CMD="$GPSD -P $PID_FILE -D5 -N -n -S $GPSPORT $device"
     $GPSD_CMD >/dev/null 2>"$LOG_FILE" &
     echo $! > "$PID_FILE"
-    sleep 5
     echo "gpsd launched. PID saved to $PID_FILE."
+
+    echo "[INFO] Waiting for gpsd to be ready on port $GPSPORT..."
+    local attempts=0
+    while ! ss -lnt | grep -q ":$GPSPORT"; do
+        attempts=$((attempts + 1))
+        if [ "$attempts" -ge 10 ]; then
+            echo "[ERR]: gpsd failed to start and listen on port $GPSPORT after 10 seconds."
+            echo "--- Last 20 lines of gpsd log ---"
+            tail -n 20 "$LOG_FILE"
+            return 1 # Indicate failure
+        fi
+        sleep 1
+    done
+    
+    echo "[OK]: gpsd is ready."
+    return 0 # Indicate success
 }
 
 start_speedreader() {
@@ -184,8 +200,8 @@ case "$1" in
         stop_speedsender
 		stop_speedreader
 		stop_gpsd
-		start_gpsd
-		start_speedreader
+        start_gpsd || { echo "[FATAL] Could not start gpsd daemon. Aborting."; exit 1; }
+        start_speedreader
         start_speedsender
         ;;
     stop)
