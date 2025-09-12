@@ -41,6 +41,8 @@ for file in "${getty_file[@]}"; do
     fi
 done
 
+apt -y update
+apt install apt dpkg
 apt -y modernize-sources
 
 APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
