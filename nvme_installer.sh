@@ -5,6 +5,9 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+echo "[INFO]: Enable user root: Set the root user password."
+passwd root
+
 mapfile -t DEVICES < <(lsblk -p -d -n -o NAME | grep 'nvme')
 
 if [ ${#DEVICES[@]} -eq 0 ]; then
@@ -175,6 +178,9 @@ echo "UUID=$P2UUID /boot ext4 defaults 0 2" >> "$FSTAB_FILE"
 echo "UUID=$P4UUID / ext4 errors=remount-ro 0 1" >> "$FSTAB_FILE"
 echo "UUID=$P5UUID /home ext4 defaults 0 2" >> "$FSTAB_FILE"
 echo "UUID=$P3UUID none swap sw 0 0" >> "$FSTAB_FILE"
+
+# Disable SUDO, we'll not use it
+rm -fv ${TEMP_MOUNT}/etc/sudoers.d/*
 
 cd ~
 sync
