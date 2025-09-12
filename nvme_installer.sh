@@ -20,7 +20,7 @@ echo "Please note that proceeding will WIPE THE ENTIRE SELECTED DRIVE."
 echo ""
 
 for i in "${!DEVICES[@]}"; do
-    echo "[$i] ${DEVICES[$i]}"
+    echo "[$i] ${DEVICES[$i]}"
 done
 echo "[X] Cancel operation and Quit"
 echo ""
