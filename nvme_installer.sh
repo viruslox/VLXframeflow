@@ -1,18 +1,15 @@
 #!/bin/bash
 
 if [ "$EUID" -ne 0 ]; then
-  echo "[ERR]: This script requires root privileges. Please run it as root or use sudo."
-  exit 1
+    echo "[ERR]: This script requires root privileges. Please run it as root or use sudo."
+    exit 1
 fi
 
-# Find all NVMe devices and store them in an array
-# The -d flag ensures we only get the main device, not its partitions.
 mapfile -t DEVICES < <(lsblk -p -d -n -o NAME | grep 'nvme')
 
-# Check if any NVMe devices were found
 if [ ${#DEVICES[@]} -eq 0 ]; then
-    echo "[INFO]: No NVMe devices found. Exit."
-    exit 0
+    echo "[INFO]: No NVMe devices found. Exit."
+    exit 0
 fi
 
 echo "The following NVMe drives were found. Please select one."
@@ -26,44 +23,42 @@ echo "[X] Cancel operation and Quit"
 echo ""
 read -p "Enter your choice and press <Enter>: " CHOICE
 
-# Handle quitting
 if [[ "$CHOICE" =~ ^[xX]$ ]]; then
-    echo "[INFO]: Operation cancelled by user. Exit."
-    exit 0
+    echo "[INFO]: Operation cancelled by user. Exit."
+    exit 0
 fi
 
-# Handle invalid (non-numeric or out-of-bounds) input
 if ! [[ "$CHOICE" =~ ^[0-9]+$ ]] || [ "$CHOICE" -ge "${#DEVICES[@]}" ]; then
-    echo "[ERR]: Invalid selection. Please enter a number from the list."
-    exit 1
+    echo "[ERR]: Invalid selection. Please enter a number from the list."
+    exit 1
 fi
 
 if [ ! -b "${DEVICES[$CHOICE]}" ]; then
-	echo "[ERR]: Unidentified error. Exit"
-	exit 1
+    echo "[ERR]: Unidentified error. Exit"
+    exit 1
 else
-	CHOSEN_DEVICE="${DEVICES[$CHOICE]}"
-	CURRENT_LAYOUT=$(sfdisk -d "$CHOSEN_DEVICE" 2>/dev/null)
+    CHOSEN_DEVICE="${DEVICES[$CHOICE]}"
+    CURRENT_LAYOUT=$(sfdisk -d "$CHOSEN_DEVICE" 2>/dev/null)
 fi
 
 if echo "$CURRENT_LAYOUT" | grep -q 'label: gpt' && \
-   echo "$CURRENT_LAYOUT" | grep -q 'type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B' && \
-   echo "$CURRENT_LAYOUT" | grep -q 'type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F' && \
-   echo "$CURRENT_LAYOUT" | grep -c 'type=0FC63DAF-8483-4772-8E79-3D69D8477DE4' -ge 3; then
+   echo "$CURRENT_LAYOUT" | grep -q 'type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B' && \
+   echo "$CURRENT_LAYOUT" | grep -q 'type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F' && \
+   echo "$CURRENT_LAYOUT" | grep -c 'type=0FC63DAF-8483-4772-8E79-3D69D8477DE4' -ge 3; then
 
-    echo "Found VLXframeflow compatible partition scheme in $CHOSEN_DEVICE."
-    read -r -p "Do You wish to skeep re-partitioning and keep /home data? (y/N) " response
-    
-case "$response" in
-    [yY])
-        SKIP_PARTITIONING=true
-        ;;
-    *)
-        SKIP_PARTITIONING=false
-        ;;
-esac
+    echo "Found VLXframeflow compatible partition scheme in $CHOSEN_DEVICE."
+    read -r -p "Do You wish to skeep re-partitioning and keep /home data? (y/N) " response
+    
+    case "$response" in
+        [yY])
+            SKIP_PARTITIONING=true
+            ;;
+        *)
+            SKIP_PARTITIONING=false
+            ;;
+    esac
 else
-    SKIP_PARTITIONING=false
+    SKIP_PARTITIONING=false
 fi
 
 ## Yeah it's probably not necessary at all
