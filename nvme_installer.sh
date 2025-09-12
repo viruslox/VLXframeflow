@@ -54,14 +54,14 @@ if echo "$CURRENT_LAYOUT" | grep -q 'label: gpt' && \
     echo "Found VLXframeflow compatible partition scheme in $CHOSEN_DEVICE."
     read -r -p "Do You wish to skeep re-partitioning and keep /home data? (y/N) " response
     
-    case "$response" in
-        [yY])
-            SKIP_PARTITIONING=true
-            ;;
-        *)
-            SKIP_PARTITIONING=false
-            ;;
-    esac
+case "$response" in
+    [yY])
+        SKIP_PARTITIONING=true
+        ;;
+    *)
+        SKIP_PARTITIONING=false
+        ;;
+esac
 else
     SKIP_PARTITIONING=false
 fi
