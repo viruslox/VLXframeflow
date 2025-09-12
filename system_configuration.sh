@@ -88,6 +88,7 @@ Components: main non-free
 Signed-By: /etc/apt/trusted.gpg.d/deb-multimedia-keyring.asc
 EOF
 
+apt --fix-broken install
 apt-get -y update
 if [[ -f /home/pkg.list ]]; then
     read -r -p "Found a list of previously installed packages. Do you want to try to re-install them? (y/N) " response
