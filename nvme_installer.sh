@@ -102,12 +102,12 @@ EOF
 fi
 
 echo "Formatting partitions"
-mkfs.vfat -F 32 -n EFI "${CHOSEN_DEVICE}${PART_SEP}1" || { echo "[ERR]: Filesystem creation failed on p1 [vfat]"; exit 1; }
-mkfs.ext4 -F -L boot "${CHOSEN_DEVICE}${PART_SEP}2"   || { echo "[ERR]: Filesystem creation failed on p2 [ext4]"; exit 1; }
-mkfs.ext4 -F -L root "${CHOSEN_DEVICE}${PART_SEP}4"   || { echo "[ERR]: Filesystem creation failed on p4 [ext4]"; exit 1; }
-mkswap -f -L swap "${CHOSEN_DEVICE}${PART_SEP}3"      || { echo "[ERR]: Swap creation failed on p3"; exit 1; }
+mkfs.vfat -F 32 -n EFI "${CHOSEN_DEVICE}p1" || { echo "[ERR]: Filesystem creation failed on p1 [vfat]"; exit 1; }
+mkfs.ext4 -F -L boot "${CHOSEN_DEVICE}p2"   || { echo "[ERR]: Filesystem creation failed on p2 [ext4]"; exit 1; }
+mkfs.ext4 -F -L root "${CHOSEN_DEVICE}p4"   || { echo "[ERR]: Filesystem creation failed on p4 [ext4]"; exit 1; }
+mkswap -f -L swap "${CHOSEN_DEVICE}p3"      || { echo "[ERR]: Swap creation failed on p3"; exit 1; }
 if [ "$SKIP_PARTITIONING" = false ]; then
-    mkfs.ext4 -F -L home "${CHOSEN_DEVICE}${PART_SEP}5" || { echo "[ERR]: Filesystem creation failed on p5 [ext4]"; exit 1; }
+    mkfs.ext4 -F -L home "${CHOSEN_DEVICE}p5" || { echo "[ERR]: Filesystem creation failed on p5 [ext4]"; exit 1; }
 fi
 echo "[OK]: Formatting complete:"
 
