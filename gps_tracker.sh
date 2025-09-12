@@ -171,17 +171,16 @@ start_gpsd() {
 }
 
 start_speedreader() {
-	echo "Launching speed reader..."
-	(gpspipe -w 127.0.0.1:$GPSPORT | while read -r line; do
-		speed_raw=$(echo "$line" | grep -o '"speed":[0-9]*\.[0-9]*')
-		if [ -n "$speed_raw" ]; then
-			#speed=$(echo "$speed_raw" | cut -d':' -f2 | cut -d'"' -f1 | cut -d'.' -f1)
-			speed=$(echo "$line" | jq '.speed | floor')
-			printf "Speed: %s km/h" "$speed" > "$SPEED_FILE"
-		fi
-	done) >/dev/null 2>&1 &
-	echo $! > "$SPEED_READER_PID"
-	echo "Speed reader launched with PID $(cat "$SPEED_READER_PID")."
+    echo "Launching speed reader..."
+    (gpspipe -w | while read -r line; do
+        if echo "$line" | grep -q '"class":"TPV"'; then
+            # jq's "//" operator provides a default value of 0 if '.speed' is null.
+            speed=$(echo "$line" | jq '(.speed // 0) | floor')
+            printf "Speed: %s km/h" "$speed" > "$SPEED_FILE"
+        fi
+    done) >/dev/null 2>&1 &
+    echo $! > "$SPEED_READER_PID"
+    echo "Speed reader launched with PID $(cat "$SPEED_READER_PID")."
 }
 
 start_speedsender() {
