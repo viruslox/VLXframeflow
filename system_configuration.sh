@@ -1,13 +1,45 @@
 #!/bin/bash
 
 if [ "$EUID" -ne 0 ]; then
-  echo "[ERR]: This script requires root privileges. Please run it as root or use sudo."
+  echo "[ERR]: This script requires root privileges."
   exit 1
 fi
 
 CRON_GPS="/opt/VLXframeflow/daily_tasks.sh"
 CRON_JOB="0 8 * * * $CRON_GPS start 2>&1"
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
+
+systemctl enable --now ssh
+getty_file=($(find /etc/systemd/system/ -name 'getty*service'))
+getty_conf_line="ExecStart=-/sbin/agetty --noreset --noclear --issue-file=/etc/issue:/etc/issue.d:/run/issue.d:/usr/lib/issue.d - \${TERM}"
+sed -i "s#^ExecStart=-/sbin/agetty.*#${getty_conf_line}#" "${getty_file[@]}"
+getty_block="ImportCredential=tty.virtual.%I.agetty.*:agetty.
+ImportCredential=tty.virtual.%I.login.*:login.
+ImportCredential=agetty.*
+ImportCredential=login.*
+ImportCredential=shell.*"
+for file in "${getty_file[@]}"; do
+    awk -v block="$getty_block" '
+    {
+        if (found_sighup) {
+            if ($0 ~ /^$/) {
+                print block
+            }
+            found_sighup = 0
+        }
+        if ($0 ~ /SendSIGHUP=yes/) {
+            found_sighup = 1
+        }
+        print $0
+    }
+    ' "$file" > "$file.tmp"
+    if [ $? -eq 0 ]; then
+        mv "$file.tmp" "$file"
+    else
+        echo "[ERR] Error editing $file."
+        rm "$file.tmp"
+    fi
+done
 
 apt -y modernize-sources
 
