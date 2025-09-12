@@ -6,7 +6,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 CRON_GPS="/opt/VLXframeflow/daily_tasks.sh"
-CRON_JOB="0 8 * * * $CRON_GPS start 2>&1"
+CRON_JOB="@reboot $CRON_GPS start 2>&1"
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
 
 systemctl enable --now ssh
