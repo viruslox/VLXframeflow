@@ -39,12 +39,13 @@ if [ ! -b "${DEVICES[$CHOICE]}" ]; then
 else
     CHOSEN_DEVICE="${DEVICES[$CHOICE]}"
     CURRENT_LAYOUT=$(sfdisk -d "$CHOSEN_DEVICE" 2>/dev/null)
+	linuxtype_count=$(echo "$CURRENT_LAYOUT" | grep -c 'type=0FC63DAF-8483-4772-8E79-3D69D8477DE4')
 fi
 
 if echo "$CURRENT_LAYOUT" | grep -q 'label: gpt' && \
    echo "$CURRENT_LAYOUT" | grep -q 'type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B' && \
    echo "$CURRENT_LAYOUT" | grep -q 'type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F' && \
-   echo "$CURRENT_LAYOUT" | grep -c 'type=0FC63DAF-8483-4772-8E79-3D69D8477DE4' -ge 3; then
+   [ "$linuxtype_count" -ge 3 ]; then
 
     echo "Found VLXframeflow compatible partition scheme in $CHOSEN_DEVICE."
     read -r -p "Do You wish to skeep re-partitioning and keep /home data? (y/N) " response
