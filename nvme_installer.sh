@@ -164,7 +164,8 @@ P5UUID=$(lsblk -f -n -o UUID "${CHOSEN_DEVICE}p5")
 
 umount "${TEMP_MOUNT}/boot/firmware"
 rmdir "${TEMP_MOUNT}/boot/firmware"
-ln -sf "${TEMP_MOUNT}/boot/efi" "${TEMP_MOUNT}/boot/firmware"
+cd $TEMP_MOUNT/boot
+ln -sf efi firmware
 
 cd $TEMP_MOUNT
 cp -p ${TEMP_MOUNT}/boot/efi/cmdline.txt ${TEMP_MOUNT}/boot/efi/cmdline.txt.BK
