@@ -144,10 +144,11 @@ fi
 rsync "${rsync_opts[@]}" / "$TEMP_MOUNT/"
 rsync_exit_code=$?
 if [ $rsync_exit_code -ne 0 ]; then
-    echo "[ERR]: OS cloning with rsync failed with exit code $rsync_exit_code."
     if [ $rsync_exit_code -eq 23 ] || [ $rsync_exit_code -eq 24 ]; then
-        echo "This indicates a partial transfer. Some files were not copied due to errors."
-    fi
+	    echo "[WARN]: OS cloning with rsync failed with exit code $rsync_exit_code."
+		echo "This indicates a partial transfer. Some files were not copied due to errors, it's still ok ignore those errors."
+    else
+	    echo "[ERR]: OS cloning with rsync failed with exit code $rsync_exit_code."
     exit 1
 fi
 
