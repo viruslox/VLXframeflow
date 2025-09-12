@@ -47,8 +47,8 @@ wget https://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/deb-multi
 dpkg -i `pwd`/deb-multimedia-keyring_2024.9.1_all.deb
 apt -y update
 apt -y install aptitude apt dpkg
-aptitude -y purge '~o'
-aptitude -y purge '~c'
+#aptitude -y purge '~o'
+#aptitude -y purge '~c'
 apt -y modernize-sources
 
 APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
