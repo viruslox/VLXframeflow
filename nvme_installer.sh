@@ -102,29 +102,16 @@ EOF
 fi
 
 echo "Formatting partitions"
-
-mkfs.vfat -F 32 -n EFI "${CHOSEN_DEVICE}p1"
-if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p1 [vfat]"; exit 1; fi
-
-mkfs.ext4 -L boot "${CHOSEN_DEVICE}p2"
-if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p2 [ext4]"; exit 1; fi
-
-mkfs.ext4 -L root "${CHOSEN_DEVICE}p4"
-if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p4 [ext4]"; exit 1; fi
-
-mkswap -L swap "${CHOSEN_DEVICE}p3"
-if [ $? -ne 0 ]; then echo "[ERR]: Swap creation failed on p3"; exit 1; fi
-
+mkfs.vfat -F 32 -n EFI "${CHOSEN_DEVICE}${PART_SEP}1" || { echo "[ERR]: Filesystem creation failed on p1 [vfat]"; exit 1; }
+mkfs.ext4 -F -L boot "${CHOSEN_DEVICE}${PART_SEP}2"   || { echo "[ERR]: Filesystem creation failed on p2 [ext4]"; exit 1; }
+mkfs.ext4 -F -L root "${CHOSEN_DEVICE}${PART_SEP}4"   || { echo "[ERR]: Filesystem creation failed on p4 [ext4]"; exit 1; }
+mkswap -f -L swap "${CHOSEN_DEVICE}${PART_SEP}3"      || { echo "[ERR]: Swap creation failed on p3"; exit 1; }
 if [ "$SKIP_PARTITIONING" = false ]; then
-	mkfs.ext4 -L home "${CHOSEN_DEVICE}p5"
-	if [ $? -ne 0 ]; then echo "[ERR]: Filesystem creation failed on p5 [ext4]"; exit 1; fi
-else
-	echo "[INFO]: Skipping /home formatting to preserve data."
+    mkfs.ext4 -F -L home "${CHOSEN_DEVICE}${PART_SEP}5" || { echo "[ERR]: Filesystem creation failed on p5 [ext4]"; exit 1; }
 fi
-
 echo "[OK]: Formatting complete:"
-lsblk -f $CHOSEN_DEVICE
 
+lsblk -f $CHOSEN_DEVICE
 echo "[INFO]: Starting OS installation in $CHOSEN_DEVICE"
 TEMP_MOUNT="/mnt/temp"
 mkdir -p "$TEMP_MOUNT"
@@ -138,13 +125,32 @@ mount "${CHOSEN_DEVICE}p1" "${TEMP_MOUNT}/boot/efi"
 mount "${CHOSEN_DEVICE}p1" "${TEMP_MOUNT}/boot/firmware"
 
 echo "[INFO] Cloning the current OS to $CHOSEN_DEVICE."
+rsync_opts=(
+    -aAXv
+    --delete
+    --exclude=/dev/*
+    --exclude=/proc/*
+    --exclude=/sys/*
+    --exclude=/tmp/*
+    --exclude=/run/*
+    --exclude=/mnt/*
+    --exclude=/media/*
+    --exclude=/lost-found
+)
 if [ "$SKIP_PARTITIONING" = true ]; then
-    $excluded_fld={'/dev/*','/proc/*','/sys/*','/tmp/*','/run/*','/mnt/*','/media/*','/lost-found', '/home/*'}"
-else
-    $excluded_fld={'/dev/*','/proc/*','/sys/*','/tmp/*','/run/*','/mnt/*','/media/*','/lost-found'}"
+    echo "[INFO]: Preserving /home as requested."
+    rsync_opts+=(--exclude=/home/*)
 fi
-rsync -aAXv --exclude=$excluded_fld / "$TEMP_MOUNT/" --delete
-if [ $? -ne 0 ]; then echo "[ERR]: OS cloning with rsync failed."; exit 1; fi
+rsync "${rsync_opts[@]}" / "$TEMP_MOUNT/"
+rsync_exit_code=$?
+if [ $rsync_exit_code -ne 0 ]; then
+    echo "[ERR]: OS cloning with rsync failed with exit code $rsync_exit_code."
+    if [ $rsync_exit_code -eq 23 ] || [ $rsync_exit_code -eq 24 ]; then
+        echo "This indicates a partial transfer. Some files were not copied due to errors."
+    fi
+    exit 1
+fi
+
 sync
 echo "[OK]: OS cloning complete."
 
