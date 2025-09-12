@@ -179,6 +179,7 @@ echo "UUID=$P4UUID / ext4 errors=remount-ro 0 1" >> "$FSTAB_FILE"
 echo "UUID=$P5UUID /home ext4 defaults 0 2" >> "$FSTAB_FILE"
 echo "UUID=$P3UUID none swap sw 0 0" >> "$FSTAB_FILE"
 
+cd ~
 sync
 while mount | grep -q "${CHOSEN_DEVICE}"; do
     echo "Found active mounts. Unmounting..."
