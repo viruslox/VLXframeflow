@@ -72,32 +72,29 @@ while mount | grep -q "${CHOSEN_DEVICE}"; do
 done
 
 if [ "$SKIP_PARTITIONING" = false ]; then
-	read -p "We are about to COMPLETELY WIPE $CHOSEN_DEVICE type 'ok' and press <Enter>: " FINAL_CONFIRM
-
-	if [ "$FINAL_CONFIRM" != "ok" ]; then
-		echo "[INFO]: Operation cancelled by user."
-		exit 0
-	fi
+    read -p "We are about to COMPLETELY WIPE $CHOSEN_DEVICE type 'ok' and press <Enter>: " FINAL_CONFIRM
+    if [ "$FINAL_CONFIRM" != "ok" ]; then
+        echo "[INFO]: Operation cancelled by user."
+        exit 0
+    fi
 
 	echo "--> Starting non-interactive partitioning on $CHOSEN_DEVICE..."
-
-    sfdisk "$CHOSEN_DEVICE" << EOF
+    sfdisk "$CHOSEN_DEVICE" << EOF
 label: gpt
-,size=1G,type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B,name="EFI System" # Partizione 1: EFI System
-,size=1G,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux boot" # Partizione 2: Linux boot
-,size=4G,type=0657FD6D-A4AB-43C4-84E5-0933C84B4F4F,name="Linux swap" # Partizione 3: Linux swap
-,size=44G,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux root" # Partizione 4: Linux root (44 GB)
-,      ,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux home" # Partizione 5: Linux home (resto del disco)
+,size=1G,type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B,name="EFI System"
+,size=1G,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux boot"
+,size=4G,type=0657FD6D-A4AB-4C34-84E5-0933C84B4F4F,name="Linux swap"
+,size=44G,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux root"
+,      ,type=0FC63DAF-8483-4772-8E79-3D69D8477DE4,name="Linux home"
 EOF
-	if [ $? -ne 0 ]; then
-		echo "[ERR]: Partitioning $CHOSEN_DEVICE failed."
-		exit 1
-	fi
-
-	# Force kernel to re-read partition table
-	partprobe "$CHOSEN_DEVICE"
-	sleep 2
-	echo "[OK]: Partitioning of $CHOSEN_DEVICE complete."
+    if [ $? -ne 0 ]; then
+        echo "[ERR]: Partitioning $CHOSEN_DEVICE failed."
+        exit 1
+    fi
+    # Force kernel to re-read partition table
+    partprobe "$CHOSEN_DEVICE"
+    sleep 2
+    echo "[OK]: Partitioning of $CHOSEN_DEVICE complete."
 fi
 
 echo "Formatting partitions"
