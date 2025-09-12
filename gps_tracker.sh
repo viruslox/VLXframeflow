@@ -2,19 +2,19 @@
 
 dedicated_user=$(ls -ld /opt/VLXframeflow | awk '{print $3}')
 if [ "$(id -u)" -eq 0 ]; then
-  echo "[ERR] Please launch this script with the dedicated user."
-  echo "Never, never use root when not necessaire."
-  exit 1
+  echo "[ERR] Please launch this script with the dedicated user."
+  echo "Never, never use root when not necessaire."
+  exit 1
 elif [ "$USER" != "$dedicated_user" ]; then
 	echo "Only $dedicated_user can correctly execute this script."
 	exit 1
 fi
 
 if [ -f ~/.frameflow_profile ]; then
-    source ~/.frameflow_profile
+    source ~/.frameflow_profile
 else
-    echo "[ERR] ~/.frameflow_profile not found."
-    exit 1
+    echo "[ERR] ~/.frameflow_profile not found."
+    exit 1
 fi
 
 if [ -z "$GPSPORT" ]; then
@@ -22,8 +22,8 @@ if [ -z "$GPSPORT" ]; then
 fi
 
 if [ -z "$RTSP_URL" ]; then
-    echo "[ERR] RTSP_URL is not set in ~/.frameflow_profile"
-    exit 1
+    echo "[ERR] RTSP_URL is not set in ~/.frameflow_profile"
+    exit 1
 fi
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -148,10 +148,10 @@ start_gpsd() {
 	fi
 	echo "Launching gpsd in background..."
 	GPSD_CMD="$GPSD -P $PID_FILE -D5 -N -n -S $GPSPORT $device"
-    $GPSD_CMD >/dev/null 2>"$LOG_FILE" &
-    echo $! > "$PID_FILE"
-    sleep 5
-    echo "gpsd launched. PID saved to $PID_FILE."
+    $GPSD_CMD >/dev/null 2>"$LOG_FILE" &
+    echo $! > "$PID_FILE"
+    sleep 5
+    echo "gpsd launched. PID saved to $PID_FILE."
 }
 
 start_speedreader() {
@@ -173,37 +173,37 @@ start_speedsender() {
 	$FFMPEG_CMD -y -f lavfi -i testsrc=size=320x180:rate=30 \
 		-vf "drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:fontsize=30:fontcolor=white:box=1:boxcolor=black@0.5:x=10:y=10:textfile='$SPEED_FILE':reload=1" \
 		-c:v libx264 -preset ultrafast -tune zerolatency -crf 23 -f rtsp "${RTSP_URL}_gps" >/dev/null 2>"$SPEED_LOG" &
-    echo $! > "$SPEED_PID"
+    echo $! > "$SPEED_PID"
 
-    sleep 1
-    echo "FFmpeg launched in background. PID saved to $SPEED_PID."
+    sleep 1
+    echo "FFmpeg launched in background. PID saved to $SPEED_PID."
 }
 
 case "$1" in
-    start)
-        stop_speedsender
+    start)
+        stop_speedsender
 		stop_speedreader
 		stop_gpsd
 		start_gpsd
 		start_speedreader
-        start_speedsender
-        ;;
-    stop)
-        stop_speedsender
+        start_speedsender
+        ;;
+    stop)
+        stop_speedsender
 		stop_speedreader
 		stop_gpsd
-        ;;
-    status)
-        status_gpsd
+        ;;
+    status)
+        status_gpsd
 		status_speedreader
 		status_speedsender
-        ;;
-    *)
+        ;;
+    *)
 		status_gpsd
 		status_speedreader
 		status_speedsender
 		echo "Usage: $0 {start|stop|status}"
-        ;;
+        ;;
 esac
 
 exit 0
