@@ -41,6 +41,7 @@ for file in "${getty_file[@]}"; do
     fi
 done
 
+apt -y purge qt* *gtk*  adwaita*
 wget https://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/deb-multimedia-keyring_2024.9.1_all.deb
 dpkg -i `pwd`/deb-multimedia-keyring_2024.9.1_all.deb
 apt -y update
