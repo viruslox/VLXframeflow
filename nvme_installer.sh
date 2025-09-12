@@ -7,7 +7,7 @@ fi
 
 echo "[INFO]: Enable user root: Set the root user password."
 passwd root
-systemctl enable sshd
+systemctl enable --now ssh
 
 mapfile -t DEVICES < <(lsblk -p -d -n -o NAME | grep 'nvme')
 
