@@ -62,7 +62,6 @@ else
     SKIP_PARTITIONING=false
 fi
 
-## Yeah it's probably not necessary at all
 while mount | grep -q "${CHOSEN_DEVICE}"; do
     echo "Found active mounts. Unmounting..."
     for mount_point in $(mount | grep "${CHOSEN_DEVICE}" | awk '{print $3}' | sort -r); do
@@ -149,7 +148,8 @@ if [ $rsync_exit_code -ne 0 ]; then
 		echo "This indicates a partial transfer. Some files were not copied due to errors, it's still ok ignore those errors."
     else
 	    echo "[ERR]: OS cloning with rsync failed with exit code $rsync_exit_code."
-    exit 1
+    	exit 1
+	 fi
 fi
 
 sync
@@ -180,10 +180,14 @@ echo "UUID=$P5UUID /home ext4 defaults 0 2" >> "$FSTAB_FILE"
 echo "UUID=$P3UUID none swap sw 0 0" >> "$FSTAB_FILE"
 
 sync
-umount $TEMP_MOUNT/boot/efi/
-umount $TEMP_MOUNT/boot/
-umount $TEMP_MOUNT/home/
-umount $TEMP_MOUNT/
+while mount | grep -q "${CHOSEN_DEVICE}"; do
+    echo "Found active mounts. Unmounting..."
+    for mount_point in $(mount | grep "${CHOSEN_DEVICE}" | awk '{print $3}' | sort -r); do
+        echo "Attempting to unmount: $mount_point"
+        umount "$mount_point"
+    done
+    sleep 1
+done
 sync
 
 echo "[OK]: OS Installation complete."
