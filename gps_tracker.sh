@@ -45,95 +45,101 @@ status_gpsd() {
             kill "$p" 2>/dev/null
         fi
     done
-	if [ ! -f "$PID_FILE" ]; then
-        echo "[INFO] GPSD PID file not found"
-    fi
-    PID=$(cat "$PID_FILE")
-    if ps -p $PID > /dev/null; then
-        echo "GPSD already running with PID: $PID"
-        echo "Check logs: tail -f $LOG_FILE"
-    else
-        echo "[WARN] GPSD PID file found but process does not exist, removing PID file" 
-	rm "$PID_FILE"
-    fi
+
+    if [ -f "$PID_FILE" ]; then
+        PID=$(cat "$PID_FILE")
+        if ps -p "$PID" > /dev/null; then
+            echo "GPSD already running with PID: $PID"
+            echo "Check logs: tail -f $LOG_FILE"
+        else
+            echo "[WARN] GPSD PID file found but process does not exist, removing PID file"
+            rm "$PID_FILE"
+        fi
+    else
+        echo "[INFO] GPSD PID file not found"
+    fi
 }
 
 status_speedreader() {
-	pgrep -f "gpspipe -w 127.0.0.1:$GPSPORT" | while read -r p; do
+    pgrep -f "gpspipe -w 127.0.0.1:$GPSPORT" | while read -r p; do
         if [ ! -f "$SPEED_READER_PID" ] || [ "$p" != "$(cat "$SPEED_READER_PID")" ]; then
             echo "[WARN] Found orphan speed reader process with PID $p. Killing it."
             kill "$p" 2>/dev/null
         fi
     done
-	if [ ! -f "$SPEED_READER_PID" ]; then
-        echo "[INFO] Speed reader PID file not found."
-    fi
-    PID=$(cat "$SPEED_READER_PID")
-    if ps -p $PID > /dev/null; then
-        echo "Speed reader already running with PID: $PID"
-    else
-        echo "[WARN] Speed reader PID file found but process does not exist, removing PID file"
-        rm "$SPEED_READER_PID"
-    fi
+
+    if [ -f "$SPEED_READER_PID" ]; then
+        PID=$(cat "$SPEED_READER_PID")
+        if ps -p "$PID" > /dev/null; then
+            echo "Speed reader already running with PID: $PID"
+        else
+            echo "[WARN] Speed reader PID file found but process does not exist, removing PID file"
+            rm "$SPEED_READER_PID"
+        fi
+    else
+        echo "[INFO] Speed reader PID file not found."
+    fi
 }
 
 status_speedsender() {
-	pgrep -f "ffmpeg -y -f lavfi" | while read -r p; do
+    pgrep -f "ffmpeg -y -f lavfi" | while read -r p; do
         if [ ! -f "$SPEED_PID" ] || [ "$p" != "$(cat "$SPEED_PID")" ]; then
             echo "[WARN] Found orphan FFmpeg process with PID $p. Killing it."
             kill "$p" 2>/dev/null
         fi
     done
-	if [ ! -f "$SPEED_PID" ]; then
-        echo "[INFO] FFmpeg PID file not found"
-    fi
-    PID=$(cat "$SPEED_PID")
-    if ps -p $PID > /dev/null; then
-        echo "FFmpeg already running with PID: $PID"
-        echo "Check logs: tail -f $SPEED_LOG"
-    else
-        echo "[WARN] FFmpeg PID file found but process does not exist, removing PID file" 
-	rm "$SPEED_PID"
-    fi
+
+    if [ -f "$SPEED_PID" ]; then
+        PID=$(cat "$SPEED_PID")
+        if ps -p "$PID" > /dev/null; then
+            echo "FFmpeg already running with PID: $PID"
+            echo "Check logs: tail -f $SPEED_LOG"
+        else
+            echo "[WARN] FFmpeg PID file found but process does not exist, removing PID file"
+            rm "$SPEED_PID"
+        fi
+    else
+        echo "[INFO] FFmpeg PID file not found"
+    fi
 }
 
 stop_gpsd() {
-    if [ ! -f "$PID_FILE" ]; then
-        echo "[INFO] GPSD PID file not found."
-	return
-    fi
-    echo "Killing gpsd..."
-    kill $(cat "$PID_FILE") 2>/dev/null
-    rm "$PID_FILE"
-    echo "Done."
-	sleep 5
-	status_gpsd
+    if [ -f "$PID_FILE" ]; then
+        echo "Killing gpsd..."
+        kill "$(cat "$PID_FILE")" 2>/dev/null
+        rm "$PID_FILE" 2>/dev/null
+        echo "Done."
+    else
+        echo "[INFO] GPSD PID file not found."
+    fi
+    sleep 5
+    status_gpsd
 }
 
 stop_speedreader() {
-	if [ -f "$SPEED_READER_PID" ]; then
-		echo "Killing speed reader process..."
-		kill $(cat "$SPEED_READER_PID") 2>/dev/null
-		rm "$SPEED_READER_PID"
-	else
-		echo "[INFO] Speed reader PID file not found."
-	fi
-	sleep 5
-	status_speedreader
+    if [ -f "$SPEED_READER_PID" ]; then
+        echo "Killing speed reader process..."
+        kill "$(cat "$SPEED_READER_PID")" 2>/dev/null
+        rm "$SPEED_READER_PID" 2>/dev/null
+    else
+        echo "[INFO] Speed reader PID file not found."
+    fi
+    sleep 5
+    status_speedreader
 }
 
 stop_speedsender() {
-    if [ ! -f "$SPEED_PID" ]; then
-        echo "[INFO] FFmpeg PID file not found."
-    fi
-    echo "Killing FFmpeg..."
-    kill $(cat "$SPEED_PID") 2>/dev/null
-    rm "$SPEED_PID"
-    echo "Done."
-	sleep 5
-	status_speedsender
+    if [ -f "$SPEED_PID" ]; then
+        echo "Killing FFmpeg..."
+        kill "$(cat "$SPEED_PID")" 2>/dev/null
+        rm "$SPEED_PID" 2>/dev/null
+        echo "Done."
+    else
+        echo "[INFO] FFmpeg PID file not found."
+    fi
+    sleep 5
+    status_speedsender
 }
-
 
 start_gpsd() {
 	if [ -z "$device" ]; then
