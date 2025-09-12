@@ -7,6 +7,7 @@ fi
 
 echo "[INFO]: Enable user root: Set the root user password."
 passwd root
+systemctl enable sshd
 
 mapfile -t DEVICES < <(lsblk -p -d -n -o NAME | grep 'nvme')
 
@@ -164,7 +165,7 @@ P5UUID=$(lsblk -f -n -o UUID "${CHOSEN_DEVICE}p5")
 
 umount "${TEMP_MOUNT}/boot/firmware"
 rmdir "${TEMP_MOUNT}/boot/firmware"
-cd $TEMP_MOUNT/boot
+cd $TEMP_MOUNT/boot/
 ln -sf efi firmware
 
 cd $TEMP_MOUNT
