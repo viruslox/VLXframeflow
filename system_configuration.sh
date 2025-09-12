@@ -5,6 +5,10 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+CRON_GPS="/opt/VLXframeflow/daily_tasks.sh"
+CRON_JOB="0 8 * * * $CRON_GPS start 2>&1"
+GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
+
 apt -y modernize-sources
 
 APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
@@ -49,10 +53,16 @@ Signed-By: /etc/apt/trusted.gpg.d/deb-multimedia-keyring.asc
 EOF
 
 apt-get -y update
-apt-get -y install ffmpeg libcamera-dev libcamera-tools libcamera-v4l2 dov4l dv4l qv4l2 v4l-conf v4l-utils uvccapture libuvc-dev uvcdynctrl gpsd gpsd-clients
+if [[ -f /home/pkg.list ]]; then
+    read -r -p "Found a list of previously installed packages. Do you want to try to re-install them? (y/N) " response
+    if [[ "$response" =~ ^[yY]$ ]]; then
+		xargs -a /home/pkg.list apt-get -y install
+	fi
+fi
+apt-get -y install ffmpeg libcamera-dev libcamera-tools libcamera-v4l2 dov4l dv4l qv4l2 v4l-conf v4l-utils uvccapture libuvc-dev uvcdynctrl gpsd gpsd-clients jq git
 
+## Reorder passwd file and get unprileged users list
 pwck -s
-
 userlist=($(awk -F: '($3>=1000)&&($1!="nobody")&&($NF!="/usr/sbin/nologin")&&($NF!="/bin/false"){print $1}' /etc/passwd))
 
 for i in "${!userlist[@]}"; do
@@ -87,6 +97,29 @@ chown -Rf $answnewuser:$answnewuser /opt/VLXframeflow
 
 echo "sysctl kernel.dmesg_restrict=0" > /etc/sysctl.d/99-disable-dmesg-restrict.conf
 sysctl --system
+
+
+# GitHub VLXframeflow Download
+echo "[INFO]: Attempting to clone project from $GITHUB_URL..."
+if (cd /opt/VLXframeflow && sudo -u "$answnewuser" git clone "$GITHUB_URL" .); then
+	echo "[OK]: GitHub project cloned successfully."
+else
+	echo "[ERR]: Failed to clone the repository. Please check the URL and network connection."
+fi
+
+# Check if the cron job already exists to avoid duplicates
+if ! crontab -l 2>/dev/null | grep -qF "$CRON_GPS start"; then
+    # Use a subshell to safely add the new job to the existing crontab
+    (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
+    if [ $? -eq 0 ]; then
+        echo "Cron job updated"
+        echo "New crontab entries:"
+        crontab -l | grep --color=auto "$CRON_GPS start"
+    else
+        echo "[ERR] Failed to add the cron job." >&2
+        exit 1
+    fi
+fi
 
 echo "[OK]: System configuration complete."
 echo "Starting by now You are supposed to use $answnewuser" 
