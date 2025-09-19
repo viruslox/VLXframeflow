@@ -1,5 +1,7 @@
 #!/bin/bash
 
+GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
+
 dedicated_user=$(ls -ld /opt/VLXframeflow | awk '{print $3}')
 if [ "$(id -u)" -eq 0 ]; then
   echo "[ERR] Please launch this script with the dedicated user."
@@ -23,16 +25,8 @@ fi
 
 mkdir -p ~/.config/systemd/user/
 cd /opt/VLXframeflow
-#wget ...ehhh ancora non ci sono :(
-#wget
-
-##touch ~/.config/systemd/user/gps_tracker.service
-##cat <<EOF > ~/.config/systemd/user/gps_tracker.service
-## ...
-##EOF
-
-systemctl --user daemon-reload
-#systemctl --user enable gps_tracker.service
+git reset --hard
+git pull -f --no-commit --no-verify https://github.com/viruslox/VLXframeflow.git
 
 chmod 700 /opt/VLXframeflow/*.sh
 
