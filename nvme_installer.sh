@@ -170,7 +170,7 @@ ln -sf efi firmware
 
 cd $TEMP_MOUNT
 cp -p ${TEMP_MOUNT}/boot/efi/cmdline.txt ${TEMP_MOUNT}/boot/efi/cmdline.txt.BK
-echo "console=serial0,115200 console=tty1 root=UUID=$P4UUID rootfstype=ext4 fsck.repair=yes rootwait nosplash debug --verbose cfg80211.ieee80211_regdom=IT" consoleblank=0 > $TEMP_MOUNT/boot/efi/cmdline.txt
+echo "console=serial0,115200 console=tty1 root=UUID=$P4UUID rootfstype=ext4 fsck.repair=yes rootwait nosplash debug --verbose cfg80211.ieee80211_regdom=IT consoleblank=0" > $TEMP_MOUNT/boot/efi/cmdline.txt
 
 # Create new fstab
 FSTAB_FILE="${TEMP_MOUNT}/etc/fstab"
