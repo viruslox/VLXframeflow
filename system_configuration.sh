@@ -138,8 +138,8 @@ else
 fi
 usermod -a -G crontab,dialout,tty,video,audio,plugdev,netdev,i2c,bluetooth $answnewuser
 loginctl enable-linger $answnewuser
-mkdir -p /opt/VLXframeflow
-chown -Rf $answnewuser:$answnewuser /opt/VLXframeflow
+mkdir -p /opt/VLXframeflow /opt/frameflow_logs 
+chown -Rf $answnewuser:$answnewuser /opt/VLXframeflow /opt/frameflow_logs
 
 echo "sysctl kernel.dmesg_restrict=0" > /etc/sysctl.d/99-disable-dmesg-restrict.conf
 sysctl --system
