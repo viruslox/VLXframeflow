@@ -45,8 +45,9 @@ elif [[ "$1" -eq 0 || "$1" -gt "$ENABLED_DEVICES" ]]; then
 fi
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-PID_FILE="$SCRIPT_DIR/ffmpeg_stream_$1.pid"
-LOG_FILE="$SCRIPT_DIR/ffmpeg_stream_$1.log"
+SCRIPTLOGS_DIR="/opt/frameflow_logs"
+PID_FILE="$SCRIPTLOGS_DIR/ffmpeg_stream_$1.pid"
+LOG_FILE="$SCRIPTLOGS_DIR/ffmpeg_stream_$1.log"
 
 FFMPEG_CMD=$(which ffmpeg)
 
