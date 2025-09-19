@@ -181,6 +181,7 @@ start_speedreader() {
     done) >/dev/null 2>&1 &
     echo $! > "$SPEED_READER_PID"
     echo "Speed reader launched with PID $(cat "$SPEED_READER_PID")."
+	sleep 5
 }
 
 start_speedsender() {
