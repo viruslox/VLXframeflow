@@ -5,5 +5,6 @@ dpkg --get-selections | awk '{print $1}' | grep -vE '^(linux-image|linux-headers
 
 ## clean logs
 find /var/log -type f -mtime +30 -exec rm -v {} \;
+find /opt/frameflow_logs -type f -mtime +15 -exec rm -v {} \;
 
 exit 0
