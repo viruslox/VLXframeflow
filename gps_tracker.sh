@@ -172,7 +172,7 @@ start_gpsd() {
 
 start_speedreader() {
     echo "Launching speed reader..."
-    (gpspipe -w | while read -r line; do
+    (gpspipe -w localhost:$GPSPORT | while read -r line; do
         if echo "$line" | grep -q '"class":"TPV"'; then
             # jq's "//" operator provides a default value of 0 if '.speed' is null.
             speed=$(echo "$line" | jq '(.speed // 0) | floor')
