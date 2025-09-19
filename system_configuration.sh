@@ -130,7 +130,7 @@ if [[ "$CHOICE" =~ ^[nN]$ ]]; then
 	read -p "Create new dedicated username [default: frameflow]: " answnewuser
 	answnewuser=${answnewuser:-frameflow}
 	adduser --home /home/$answnewuser --shell /bin/bash --gecos "VLXframeflow tech user" $answnewuser
-elif [[ "$CHOICE" =~ ^[0-9]+$ ]] || [ "$CHOICE" -ge "${#userlist[@]}" ]; then
+elif [[ ! "$CHOICE" =~ ^[0-9]+$ ]] || [ "$CHOICE" -ge "${#userlist[@]}" ]; then
     echo "[ERR]: Invalid selection. Exit."
     exit 1
 else
