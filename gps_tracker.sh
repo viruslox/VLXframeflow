@@ -27,12 +27,13 @@ if [ -z "$RTSP_URL" ]; then
 fi
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-PID_FILE="$SCRIPT_DIR/gps_tracker.pid"
-LOG_FILE="$SCRIPT_DIR/gps_tracker.log"
-SPEED_PID="$SCRIPT_DIR/gps_speed.pid"
-SPEED_LOG="$SCRIPT_DIR/gps_speed.log"
-SPEED_FILE="$SCRIPT_DIR/gps_speed"
-SPEED_READER_PID="$SCRIPT_DIR/gps_reader.pid"
+SCRIPTLOGS_DIR="/opt/frameflow_logs"
+PID_FILE="$SCRIPTLOGS_DIR/gps_tracker.pid"
+LOG_FILE="$SCRIPTLOGS_DIR/gps_tracker.log"
+SPEED_PID="$SCRIPTLOGS_DIR/gps_speed.pid"
+SPEED_LOG="$SCRIPTLOGS_DIR/gps_speed.log"
+SPEED_FILE="$SCRIPTLOGS_DIR/gps_speed"
+SPEED_READER_PID="$SCRIPTLOGS_DIR/gps_reader.pid"
 
 device=/dev/$(dmesg | grep -E 'tty(ACM|USB)[0-9]+' | grep -v 'disconnect' | tail -n 1 | grep -o 'tty[A-Z]*[0-9]*')
 GPSD=/usr/sbin/gpsd
