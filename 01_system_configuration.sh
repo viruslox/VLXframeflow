@@ -9,8 +9,8 @@ fi
 
 VLXsuite_DIR="/opt/VLXframeflow"
 VLXlogs_DIR="/opt/VLXflowlogs"
-CRON_GPS="/opt/VLXframeflow/daily_tasks.sh"
-CRON_JOB="@reboot $CRON_GPS start 2>&1"
+CRON_script="$VLXsuite_DIR/04_maintenance.sh"
+CRON_JOB="@reboot $CRON_script start 2>&1"
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
 
 systemctl enable --now ssh
