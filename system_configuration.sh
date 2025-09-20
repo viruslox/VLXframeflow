@@ -7,6 +7,8 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+VLXsuite_DIR="/opt/VLXframeflow"
+VLXlogs_DIR="/opt/VLXflowlogs"
 CRON_GPS="/opt/VLXframeflow/daily_tasks.sh"
 CRON_JOB="@reboot $CRON_GPS start 2>&1"
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
@@ -143,8 +145,8 @@ else
 fi
 usermod -a -G crontab,dialout,tty,video,audio,plugdev,netdev,i2c,bluetooth $answnewuser
 loginctl enable-linger $answnewuser
-mkdir -p /opt/VLXframeflow /opt/frameflow_logs 
-chown -Rf $answnewuser:$answnewuser /opt/VLXframeflow /opt/frameflow_logs
+mkdir -p $VLXsuite_DIR $VLXlogs_DIR
+chown -Rf $answnewuser:$answnewuser $VLXsuite_DIR $VLXlogs_DIR
 
 echo "sysctl kernel.dmesg_restrict=0" > /etc/sysctl.d/99-disable-dmesg-restrict.conf
 sysctl --system
@@ -152,7 +154,7 @@ sysctl --system
 
 # GitHub VLXframeflow Download
 echo "[INFO]: Attempting to clone project from $GITHUB_URL..."
-if (cd /opt/VLXframeflow && sudo -u "$answnewuser" git clone "$GITHUB_URL" .); then
+if (cd $VLXsuite_DIR && sudo -u "$answnewuser" git clone "$GITHUB_URL" .); then
 	echo "[OK]: GitHub project cloned successfully."
 else
 	echo "[ERR]: Failed to clone the repository. Please check the URL and network connection."
