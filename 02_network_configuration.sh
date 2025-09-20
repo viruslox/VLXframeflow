@@ -80,7 +80,7 @@ EOF
 	
 	systemctl enable wpa_supplicant@$iface.service
 
-    else
+    elif [[ "$iface" != *bond* ]]; then
 ## Ethernet and USB net interfaces
 cat <<EOF > $NORM_PROFILE/10-$iface.network
 [Match]
