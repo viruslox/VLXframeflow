@@ -1,5 +1,7 @@
 #!/bin/bash
 
+## This script prepare the OS to run VLXframeflow suite
+
 if [ "$EUID" -ne 0 ]; then
   echo "[ERR]: This script requires root privileges."
   exit 1
@@ -42,17 +44,20 @@ for file in "${getty_file[@]}"; do
 done
 
 apt -y purge qt* *gtk*  adwaita*
-apt -y dist-upgrade
+apt -y autoremove
 apt -y upgrade
+apt -y dist-upgrade
 apt -y autoremove
 wget https://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/deb-multimedia-keyring_2024.9.1_all.deb
 dpkg -i `pwd`/deb-multimedia-keyring_2024.9.1_all.deb
+
 apt -y update
 apt -y install aptitude apt dpkg
 apt -y modernize-sources
 apt -y autoremove
-apt -y dist-upgrade
 apt -y upgrade
+apt -y dist-upgrade
+
 aptitude -y purge '~o'
 aptitude -y purge '~c'
 
