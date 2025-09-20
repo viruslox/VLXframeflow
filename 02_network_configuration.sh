@@ -1,7 +1,5 @@
 #!/bin/bash
 
-### TODO: create /etc/wpa_supplicant/wpa_supplicant-$iface.conf grabbing info from network manager or leave it empty
-
 if [ "$EUID" -ne 0 ]; then
   echo "[ERR]: This script requires root privileges."
   exit 1
@@ -71,7 +69,16 @@ wpa_key_mgmt=WPA-PSK
 rsn_pairwise=CCMP
 EOF
 
-systemctl enable wpa_supplicant@$iface.service
+	rm -f /etc/wpa_supplicant/wpa_supplicant-$iface.conf 2>/dev/null
+	for knownwlans in /etc/NetworkManager/system-connections/* ; do
+		if grep -q 'type=wifi' $knownwlans; then
+			echo 'network={' >> /etc/wpa_supplicant/wpa_supplicant-$iface.conf
+			grep -h -E '^ssid=|^psk=' $knownwlans | awk -F'=' '{print "    " $1"=\""$2"\""}' >> "/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
+			echo '}' >> /etc/wpa_supplicant/wpa_supplicant-$iface.conf
+		fi
+	done
+	
+	systemctl enable wpa_supplicant@$iface.service
 
     else
 ## Ethernet and USB net interfaces
@@ -100,3 +107,5 @@ systemctl enable systemd-networkd
 systemctl enable systemd-resolved
 
 echo "Now You should restart to give a try - ...keep monitor and keyboard on Your arm lenght range :D"
+
+exit 0
