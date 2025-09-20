@@ -17,6 +17,13 @@ else
     exit 1
 fi
 
+if [ -z "$VLXsuite_DIR" ]; then
+	VLXsuite_DIR="/opt/VLXframeflow"
+fi
+if [ -z "$VLXlogs_DIR" ]; then
+	$VLXlogs_DIR="/opt/VLXflowlogs"
+fi
+
 if [ -z "$GPSPORT" ]; then
 	GPSPORT=1198
 fi
@@ -26,14 +33,12 @@ if [ -z "$RTSP_URL" ]; then
     exit 1
 fi
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-SCRIPTLOGS_DIR="/opt/frameflow_logs"
-PID_FILE="$SCRIPTLOGS_DIR/gps_tracker.pid"
-LOG_FILE="$SCRIPTLOGS_DIR/gps_tracker.log"
-SPEED_PID="$SCRIPTLOGS_DIR/gps_speed.pid"
-SPEED_LOG="$SCRIPTLOGS_DIR/gps_speed.log"
-SPEED_FILE="$SCRIPTLOGS_DIR/gps_speed"
-SPEED_READER_PID="$SCRIPTLOGS_DIR/gps_reader.pid"
+PID_FILE="$VLXlogs_DIR/gps_tracker.pid"
+LOG_FILE="$VLXlogs_DIR/gps_tracker.log"
+SPEED_PID="$VLXlogs_DIR/gps_speed.pid"
+SPEED_LOG="$VLXlogs_DIR/gps_speed.log"
+SPEED_FILE="$VLXlogs_DIR/gps_speed"
+SPEED_READER_PID="$VLXlogs_DIR/gps_reader.pid"
 
 device=/dev/$(dmesg | grep -E 'tty(ACM|USB)[0-9]+' | grep -v 'disconnect' | tail -n 1 | grep -o 'tty[A-Z]*[0-9]*')
 GPSD=/usr/sbin/gpsd
@@ -76,6 +81,7 @@ status_speedreader() {
         else
             echo "[WARN] Speed reader PID file found but process does not exist, removing PID file"
             rm "$SPEED_READER_PID"
+			rm "$SPEED_FILE" 
         fi
     else
         echo "[INFO] Speed reader PID file not found."
@@ -122,6 +128,7 @@ stop_speedreader() {
         echo "Killing speed reader process..."
         kill "$(cat "$SPEED_READER_PID")" 2>/dev/null
         rm "$SPEED_READER_PID" 2>/dev/null
+		rm "$SPEED_FILE" 2>/dev/null
     else
         echo "[INFO] Speed reader PID file not found."
     fi
@@ -173,6 +180,7 @@ start_gpsd() {
 
 start_speedreader() {
     echo "Launching speed reader..."
+	touch $SPEED_FILE
     (gpspipe -w localhost:$GPSPORT | while read -r line; do
         if echo "$line" | grep -q '"class":"TPV"'; then
             # jq's "//" operator provides a default value of 0 if '.speed' is null.
