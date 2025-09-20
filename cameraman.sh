@@ -16,6 +16,13 @@ else
     exit 1
 fi
 
+if [ -z "$VLXsuite_DIR" ]; then
+	VLXsuite_DIR="/opt/VLXframeflow"
+fi
+if [ -z "$VLXlogs_DIR" ]; then
+	$VLXlogs_DIR="/opt/VLXflowlogs"
+fi
+
 # if zero means not enabled; 1 means enable only the first device found, 2 only the first 2 devices found...
 if [ -z "$ENABLED_DEVICES" ]; then
     ENABLED_DEVICES=1
@@ -44,10 +51,8 @@ elif [[ "$1" -eq 0 || "$1" -gt "$ENABLED_DEVICES" ]]; then
     exit 1
 fi
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-SCRIPTLOGS_DIR="/opt/frameflow_logs"
-PID_FILE="$SCRIPTLOGS_DIR/ffmpeg_stream_$1.pid"
-LOG_FILE="$SCRIPTLOGS_DIR/ffmpeg_stream_$1.log"
+PID_FILE="$VLXlogs_DIR/ffmpeg_stream_$1.pid"
+LOG_FILE="$VLXlogs_DIR/ffmpeg_stream_$1.log"
 
 FFMPEG_CMD=$(which ffmpeg)
 
