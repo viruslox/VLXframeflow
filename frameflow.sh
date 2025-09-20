@@ -1,6 +1,11 @@
 #!/bin/bash
 
+# Suite setup, update and utils
+
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
+# IF You wish to change PATH, be sure that You have write rights there."
+VLXsuite_DIR="/opt/VLXframeflow"
+VLXlogs_DIR="/opt/VLXflowlogs"
 
 dedicated_user=$(ls -ld /opt/VLXframeflow | awk '{print $3}')
 if [ "$(id -u)" -eq 0 ]; then
@@ -21,10 +26,13 @@ if [ ! -f ~/.frameflow_profile ]; then
 	echo "AUDIODEV='card.*USB'" >> ~/.frameflow_profile
 	echo "# Define the API endpoint URL" >> ~/.frameflow_profile
 	echo "#API_URL=\"http://your-server-ip:3000/update-gps\"" >> ~/.frameflow_profile
+ 	echo "# IF You wish to change PATH, be sure that You have write rights there." >> ~/.frameflow_profile
+	echo "VLXsuite_DIR=\"${VLXsuite_DIR}\"" >> ~/.frameflow_profile
+	echo "VLXlogs_DIR=\"${VLXlogs_DIR}\"" >> ~/.frameflow_profile
 fi
 
 mkdir -p ~/.config/systemd/user/
-cd /opt/VLXframeflow
+cd $VLXsuite_DIR/
 git reset --hard
 git pull -f --no-commit --no-verify https://github.com/viruslox/VLXframeflow.git
 
