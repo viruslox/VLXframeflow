@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e # Immedtate quit in case of error
 
 PROFILE_NAME=$1
 # Sort all interfaces, pickup only the first wi-fi interface.
@@ -12,8 +11,10 @@ if [ -z "$PROFILE_NAME" ] || [ ! -d "$PROFILE_PATH" ]; then
     exit 1
 fi
 
-systemctl stop hostapd || true ## Because the initial "set -e" we need to override errors
-systemctl stop wpa_supplicant@$WIFI_IF.service || true
+systemctl stop hostapd
+systemctl stop wpa_supplicant@$WIFI_IF.service
+systemctl disable hostapd
+systemctl disable wpa_supplicant@$WIFI_IF.service
 
 # Clean systemd network settings
 rm -f /etc/systemd/network/*.network /etc/systemd/network/*.netdev
@@ -25,9 +26,11 @@ systemctl restart systemd-networkd
 
 if [ "$PROFILE_NAME" = "normal" ]; then
     sleep 2
+    systemctl enable wpa_supplicant@$WIFI_IF.service
     systemctl start wpa_supplicant@$WIFI_IF.service
 elif [ "$PROFILE_NAME" = "ap-bonding" ]; then
     sleep 2 
+    systemctl enable hostapd
     systemctl start hostapd
 fi
 
