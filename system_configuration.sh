@@ -45,26 +45,31 @@ for file in "${getty_file[@]}"; do
     fi
 done
 
-apt -y purge qt* *gtk*  adwaita*
-apt -y autoremove
-apt -y upgrade
-apt -y dist-upgrade
-apt -y autoremove
-wget https://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/deb-multimedia-keyring_2024.9.1_all.deb
-dpkg -i `pwd`/deb-multimedia-keyring_2024.9.1_all.deb
 
-apt -y update
-apt -y install aptitude apt dpkg
-apt -y modernize-sources
-apt -y autoremove
-apt -y upgrade
-apt -y dist-upgrade
+read -r -p "Do you want to perform a full system update and reconfigure APT sources? (Y/n) " response
+if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
+    apt -y purge qt* *gtk* adwaita*
+    apt -y autoremove
+    apt -y upgrade
+    apt -y dist-upgrade
+    apt -y autoremove
+    wget https://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/deb-multimedia-keyring_2024.9.1_all.deb
+    dpkg -i `pwd`/deb-multimedia-keyring_2024.9.1_all.deb
 
-aptitude -y purge '~o'
-aptitude -y purge '~c'
+    apt -y update
+    apt -y install aptitude apt dpkg
+    apt -y modernize-sources
+    apt -y autoremove
+    apt -y upgrade
+    apt -y dist-upgrade
 
-APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
-cat <<EOF > $APTGET_FILE
+    aptitude -y purge '~o'
+    aptitude -y purge '~c'
+
+    APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
+	DEBMLTMEDIA_FILE="/etc/apt/sources.list.d/unofficial-multimedia-packages.sources"
+ 
+    cat <<EOF > $APTGET_FILE
 # Modernized from /etc/apt/sources.list
 Types: deb
 URIs: https://deb.debian.org/debian/
@@ -94,8 +99,8 @@ Components: main contrib non-free non-free-firmware
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 EOF
 
-DEBMLTMEDIA_FILE="/etc/apt/sources.list.d/unofficial-multimedia-packages.sources"
-cat <<EOF > $DEBMLTMEDIA_FILE
+
+	cat <<EOF > $DEBMLTMEDIA_FILE
 # Modernized from /etc/apt/sources.list
 Types: deb
 URIs: https://www.deb-multimedia.org/
@@ -104,13 +109,18 @@ Components: main non-free
 Signed-By: /usr/share/keyrings/deb-multimedia-keyring.pgp
 EOF
 
+else
+    echo "[INFO]: Skipping system update and APT reconfiguration as requested."
+fi
+
+
 apt --fix-broken install
 apt-get -y update
 if [[ -f /home/pkg.list ]]; then
     read -r -p "Found a list of previously installed packages. Do you want to try to re-install them? (y/N) " response
     if [[ "$response" =~ ^[yY]$ ]]; then
-		xargs -a /home/pkg.list apt-get -y install
-	fi
+        xargs -a /home/pkg.list apt-get -y install
+    fi
 fi
 apt-get -y install ffmpeg libavdevice-dev libcamera-dev libcamera-tools libcamera-v4l2 dov4l dv4l qv4l2 v4l-conf v4l-utils uvccapture libuvc-dev uvcdynctrl gpsd gpsd-clients jq git hostapd systemd-resolved
 
@@ -134,14 +144,14 @@ fi
 
 # Handle invalid (non-numeric or out-of-bounds) input
 if [[ "$CHOICE" =~ ^[nN]$ ]]; then
-	read -p "Create new dedicated username [default: frameflow]: " answnewuser
-	answnewuser=${answnewuser:-frameflow}
-	adduser --home /home/$answnewuser --shell /bin/bash --gecos "VLXframeflow tech user" $answnewuser
+    read -p "Create new dedicated username [default: frameflow]: " answnewuser
+    answnewuser=${answnewuser:-frameflow}
+    adduser --home /home/$answnewuser --shell /bin/bash --gecos "VLXframeflow tech user" $answnewuser
 elif [[ ! "$CHOICE" =~ ^[0-9]+$ ]] || [ "$CHOICE" -ge "${#userlist[@]}" ]; then
     echo "[ERR]: Invalid selection. Exit."
     exit 1
 else
-	answnewuser=${userlist[$CHOICE]}
+    answnewuser=${userlist[$CHOICE]}
 fi
 usermod -a -G crontab,dialout,tty,video,audio,plugdev,netdev,i2c,bluetooth $answnewuser
 loginctl enable-linger $answnewuser
@@ -155,9 +165,9 @@ sysctl --system
 # GitHub VLXframeflow Download
 echo "[INFO]: Attempting to clone project from $GITHUB_URL..."
 if (cd $VLXsuite_DIR && sudo -u "$answnewuser" git clone "$GITHUB_URL" .); then
-	echo "[OK]: GitHub project cloned successfully."
+    echo "[OK]: GitHub project cloned successfully."
 else
-	echo "[ERR]: Failed to clone the repository. Please check the URL and network connection."
+    echo "[ERR]: Failed to clone the repository. Please check the URL and network connection."
 fi
 
 # Check if the cron job already exists to avoid duplicates
