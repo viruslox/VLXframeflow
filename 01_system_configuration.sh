@@ -14,6 +14,7 @@ CRON_JOB="@reboot $CRON_script start 2>&1"
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
 
 systemctl enable --now ssh
+systemctl unmask hostapd 
 getty_file=($(find /etc/systemd/system/ -name 'getty*service'))
 getty_conf_line="ExecStart=-/sbin/agetty --noreset --noclear --issue-file=/etc/issue:/etc/issue.d:/run/issue.d:/usr/lib/issue.d - \${TERM}"
 sed -i "s#^ExecStart=-/sbin/agetty.*#${getty_conf_line}#" "${getty_file[@]}"
