@@ -1,5 +1,9 @@
 #!/bin/bash
 
+## This script is created and tested to install Raspbian/Debian on Raspberry PI3b+/PI4b/PI5 NVME drives from Raspian on SD
+## In case You're in doubt, You can start from "Rapberry Pi OS Lite (64-bit)" - compatible with Raspberry Pi3/4/400/5
+## - The script is also compatible with OrangePi5 and Radxa Rock5 if running Debian or Armbian on SD
+
 if [ "$EUID" -ne 0 ]; then
     echo "[ERR]: This script requires root privileges. Please run it as root or use sudo."
     exit 1
