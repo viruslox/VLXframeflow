@@ -65,6 +65,10 @@ start() {
 	CAMERA=$(($1 - 1))
 	#videodevlist=$(v4l2-ctl --list-devices | grep -A1 'usb-xhci' | grep '/dev/video' | head -n1 | xargs)
 	mapfile -t videodevlist < <(v4l2-ctl --list-devices | grep -A1 'usb-xhci' | grep '/dev/video')
+ 	if [ -z "$videodevlist" ]; then
+		echo "No 'usb-xhci' device found. Trying the general 'usb' filter..."
+		videodevlist=$(v4l2-ctl --list-devices | grep -A1 'usb' | grep '/dev/video')
+	fi
 	echo "Found input video devices: ${videodevlist[@]}"
     
     if [[ "$CAMERA" -eq 0 ]] && [[ -n "${AUDIODEV}" ]]; then
