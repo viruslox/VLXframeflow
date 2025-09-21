@@ -146,7 +146,7 @@ start_sender() {
     (
         gpspipe -w "localhost:$GPSPORT" | grep --line-buffered '"class":"TPV"' | \
         while read -r line; do
-            JSON_PAYLOAD=$(echo "$line" | jq -c '{ "lat": .lat, "lon": .lon, "alt": .altMSL, "pos_error": (.epx // 0) }')
+            JSON_PAYLOAD=$(echo "$line" | jq -c '{ "lat": .lat, "lon": .lon, "alt": .altMSL, "pos_error": (.epx // 0), "speed": (.speed // 0) }')
 
             if [[ -n "$JSON_PAYLOAD" && "$JSON_PAYLOAD" != "null" ]]; then
                 curl -s -X POST "$API_URL" \
@@ -157,6 +157,7 @@ start_sender() {
 			sleep 5
         done
     ) >"$SEND_LOG" 2>&1 &
+    
     echo $! > "$SEND_PID"
     echo "gpspipe sender launched. PID saved to $SEND_PID."
 }
