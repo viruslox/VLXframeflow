@@ -33,88 +33,63 @@ if [ -z "$RTSP_URL" ]; then
     exit 1
 fi
 
-PID_FILE="$VLXlogs_DIR/gps_tracker.pid"
-LOG_FILE="$VLXlogs_DIR/gps_tracker.log"
-SPEED_PID="$VLXlogs_DIR/gps_speed.pid"
-SPEED_LOG="$VLXlogs_DIR/gps_speed.log"
-SPEED_FILE="$VLXlogs_DIR/gps_speed"
-SPEED_READER_PID="$VLXlogs_DIR/gps_reader.pid"
+GPSD_PID="$VLXlogs_DIR/gps_gpsd.pid"
+GPSD_LOG="$VLXlogs_DIR/gps_gpsd.log"
+SEND_PID="$VLXlogs_DIR/gps_api.pid"
+SEND_LOG="$VLXlogs_DIR/gps_api.log"
 
 device=/dev/$(dmesg | grep -E 'tty(ACM|USB)[0-9]+' | grep -v 'disconnect' | tail -n 1 | grep -o 'tty[A-Z]*[0-9]*')
-GPSD=/usr/sbin/gpsd
-FFMPEG_CMD=$(which ffmpeg)
+GPSD_BIN=/usr/sbin/gpsd
 
 status_gpsd() {
-    pgrep -f "$GPSD -P $PID_FILE" | while read -r p; do
-        if [ ! -f "$PID_FILE" ] || [ "$p" != "$(cat "$PID_FILE")" ]; then
+    pgrep -f "$GPSD -P $GPSD_PID" | while read -r p; do
+        if [ ! -f "$GPSD_PID" ] || [ "$p" != "$(cat "$GPSD_PID")" ]; then
             echo "[WARN] Found orphan gpsd process with PID $p. Killing it."
             kill "$p" 2>/dev/null
         fi
     done
 
-    if [ -f "$PID_FILE" ]; then
-        PID=$(cat "$PID_FILE")
+    if [ -f "$GPSD_PID" ]; then
+        PID=$(cat "$GPSD_PID")
         if ps -p "$PID" > /dev/null; then
             echo "GPSD already running with PID: $PID"
-            echo "Check logs: tail -f $LOG_FILE"
+            echo "Check logs: tail -f $GPSD_LOG"
         else
             echo "[WARN] GPSD PID file found but process does not exist, removing PID file"
-            rm "$PID_FILE"
+            rm "$GPSD_PID"
         fi
     else
         echo "[INFO] GPSD PID file not found"
     fi
 }
 
-status_speedreader() {
-    pgrep -f "gpspipe -w 127.0.0.1:$GPSPORT" | while read -r p; do
-        if [ ! -f "$SPEED_READER_PID" ] || [ "$p" != "$(cat "$SPEED_READER_PID")" ]; then
-            echo "[WARN] Found orphan speed reader process with PID $p. Killing it."
+status_sender() {
+    pgrep -f "gpspipe -w localhost:$GPSPORT" | while read -r p; do
+        if [ ! -f "$SEND_PID" ] || [ "$p" != "$(cat "$SEND_PID")" ]; then
+            echo "[WARN] Found orphan gpspipe process with PID $p. Killing it."
             kill "$p" 2>/dev/null
         fi
     done
 
-    if [ -f "$SPEED_READER_PID" ]; then
-        PID=$(cat "$SPEED_READER_PID")
+    if [ -f "$SEND_PID" ]; then
+        PID=$(cat "$SEND_PID")
         if ps -p "$PID" > /dev/null; then
-            echo "Speed reader already running with PID: $PID"
+            echo "gpspipe already running with PID: $PID"
+            echo "Check logs: tail -f $SEND_LOG"
         else
-            echo "[WARN] Speed reader PID file found but process does not exist, removing PID file"
-            rm "$SPEED_READER_PID"
-			rm "$SPEED_FILE" 
+            echo "[WARN] gpspipe PID file found but process does not exist, removing PID file"
+            rm "$SEND_PID"
         fi
     else
-        echo "[INFO] Speed reader PID file not found."
-    fi
-}
-
-status_speedsender() {
-    pgrep -f "ffmpeg -y -f lavfi" | while read -r p; do
-        if [ ! -f "$SPEED_PID" ] || [ "$p" != "$(cat "$SPEED_PID")" ]; then
-            echo "[WARN] Found orphan FFmpeg process with PID $p. Killing it."
-            kill "$p" 2>/dev/null
-        fi
-    done
-
-    if [ -f "$SPEED_PID" ]; then
-        PID=$(cat "$SPEED_PID")
-        if ps -p "$PID" > /dev/null; then
-            echo "FFmpeg already running with PID: $PID"
-            echo "Check logs: tail -f $SPEED_LOG"
-        else
-            echo "[WARN] FFmpeg PID file found but process does not exist, removing PID file"
-            rm "$SPEED_PID"
-        fi
-    else
-        echo "[INFO] FFmpeg PID file not found"
+        echo "[INFO] gpspipe PID file not found"
     fi
 }
 
 stop_gpsd() {
-    if [ -f "$PID_FILE" ]; then
+    if [ -f "$GPSD_PID" ]; then
         echo "Killing gpsd..."
-        kill "$(cat "$PID_FILE")" 2>/dev/null
-        rm "$PID_FILE" 2>/dev/null
+        kill "$(cat "$GPSD_PID")" 2>/dev/null
+        rm "$GPSD_PID" 2>/dev/null
         echo "Done."
     else
         echo "[INFO] GPSD PID file not found."
@@ -123,30 +98,17 @@ stop_gpsd() {
     status_gpsd
 }
 
-stop_speedreader() {
-    if [ -f "$SPEED_READER_PID" ]; then
-        echo "Killing speed reader process..."
-        kill "$(cat "$SPEED_READER_PID")" 2>/dev/null
-        rm "$SPEED_READER_PID" 2>/dev/null
-		rm "$SPEED_FILE" 2>/dev/null
-    else
-        echo "[INFO] Speed reader PID file not found."
-    fi
-    sleep 5
-    status_speedreader
-}
-
-stop_speedsender() {
-    if [ -f "$SPEED_PID" ]; then
-        echo "Killing FFmpeg..."
-        kill "$(cat "$SPEED_PID")" 2>/dev/null
-        rm "$SPEED_PID" 2>/dev/null
+stop_sender() {
+    if [ -f "$SEND_PID" ]; then
+        echo "Killing gpspipe..."
+        kill "$(cat "$SEND_PID")" 2>/dev/null
+        rm "$SEND_PID" 2>/dev/null
         echo "Done."
     else
-        echo "[INFO] FFmpeg PID file not found."
+        echo "[INFO] gpspipe PID file not found."
     fi
     sleep 5
-    status_speedsender
+    status_sender
 }
 
 start_gpsd() {
@@ -156,10 +118,10 @@ start_gpsd() {
     fi
 
     echo "Launching gpsd in background..."
-    GPSD_CMD="$GPSD -P $PID_FILE -D5 -N -n -S $GPSPORT $device"
-    $GPSD_CMD >/dev/null 2>"$LOG_FILE" &
-    echo $! > "$PID_FILE"
-    echo "gpsd launched. PID saved to $PID_FILE."
+    GPSD_CMD="$GPSD -P $GPSD_PID -D5 -N -n -S $GPSPORT $device"
+    $GPSD_CMD >/dev/null 2>"$GPSD_LOG" &
+    echo $! > "$GPSD_PID"
+    echo "gpsd launched. PID saved to $GPSD_PID."
 
     echo "[INFO] Waiting for gpsd to be ready on port $GPSPORT..."
     local attempts=0
@@ -168,7 +130,7 @@ start_gpsd() {
         if [ "$attempts" -ge 10 ]; then
             echo "[ERR]: gpsd failed to start and listen on port $GPSPORT after 10 seconds."
             echo "--- Last 20 lines of gpsd log ---"
-            tail -n 20 "$LOG_FILE"
+            tail -n 20 "$GPSD_LOG"
             return 1 # Indicate failure
         fi
         sleep 1
@@ -178,55 +140,44 @@ start_gpsd() {
     return 0 # Indicate success
 }
 
-start_speedreader() {
-    echo "Launching speed reader..."
-	touch $SPEED_FILE
-    (gpspipe -w localhost:$GPSPORT | while read -r line; do
-        if echo "$line" | grep -q '"class":"TPV"'; then
-            # jq's "//" operator provides a default value of 0 if '.speed' is null.
-            speed=$(echo "$line" | jq '(.speed // 0) | floor')
-            printf "Speed: %s km/h" "$speed" > "$SPEED_FILE"
-        fi
-    done) >/dev/null 2>&1 &
-    echo $! > "$SPEED_READER_PID"
-    echo "Speed reader launched with PID $(cat "$SPEED_READER_PID")."
-	sleep 5
-}
+start_sender() {
+    echo "Launching gpspipe sender in background..."
 
-start_speedsender() {
-	echo "Launching FFmpeg in background..."
-	$FFMPEG_CMD -y -f lavfi -i testsrc=size=320x180:rate=30 \
-		-vf "drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf:fontsize=30:fontcolor=white:box=1:boxcolor=black@0.5:x=10:y=10:textfile='$SPEED_FILE':reload=1" \
-		-c:v libx264 -preset ultrafast -tune zerolatency -crf 23 -f rtsp "${RTSP_URL}_gps" >/dev/null 2>"$SPEED_LOG" &
-    echo $! > "$SPEED_PID"
+    (
+        gpspipe -w "localhost:$GPSPORT" | grep --line-buffered '"class":"TPV"' | \
+        while read -r line; do
+            JSON_PAYLOAD=$(echo "$line" | jq -c '{ "lat": .lat, "lon": .lon, "alt": .altMSL, "pos_error": (.epx // 0) }')
 
-    sleep 1
-    echo "FFmpeg launched in background. PID saved to $SPEED_PID."
+            if [[ -n "$JSON_PAYLOAD" && "$JSON_PAYLOAD" != "null" ]]; then
+                curl -s -X POST "$API_URL" \
+                     -H "Content-Type: application/json" \
+                     -H "Authorization: Bearer $AUTH_TOKEN" \
+                     -d "$JSON_PAYLOAD"
+            fi
+        done
+    ) >"$SEND_LOG" 2>&1 &
+    echo $! > "$SEND_PID"
+    echo "gpspipe sender launched. PID saved to $SEND_PID."
 }
 
 case "$1" in
     start)
-        stop_speedsender
-		stop_speedreader
+        stop_sender
 		stop_gpsd
         start_gpsd || { echo "[FATAL] Could not start gpsd daemon. Aborting."; exit 1; }
-        start_speedreader
-        start_speedsender
+        start_sender
         ;;
     stop)
-        stop_speedsender
-		stop_speedreader
+        stop_sender
 		stop_gpsd
         ;;
     status)
         status_gpsd
-		status_speedreader
-		status_speedsender
+		status_sender
         ;;
     *)
 		status_gpsd
-		status_speedreader
-		status_speedsender
+		status_sender
 		echo "Usage: $0 {start|stop|status}"
         ;;
 esac
