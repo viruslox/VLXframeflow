@@ -154,6 +154,7 @@ start_sender() {
                      -H "Authorization: Bearer $AUTH_TOKEN" \
                      -d "$JSON_PAYLOAD"
             fi
+			sleep 1
         done
     ) >"$SEND_LOG" 2>&1 &
     echo $! > "$SEND_PID"
