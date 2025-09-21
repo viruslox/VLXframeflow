@@ -42,7 +42,7 @@ device=/dev/$(dmesg | grep -E 'tty(ACM|USB)[0-9]+' | grep -v 'disconnect' | tail
 GPSD_BIN=/usr/sbin/gpsd
 
 status_gpsd() {
-    pgrep -f "$GPSD -P $GPSD_PID" | while read -r p; do
+    pgrep -f "$GPSD_BIN -P $GPSD_PID" | while read -r p; do
         if [ ! -f "$GPSD_PID" ] || [ "$p" != "$(cat "$GPSD_PID")" ]; then
             echo "[WARN] Found orphan gpsd process with PID $p. Killing it."
             kill "$p" 2>/dev/null
@@ -118,7 +118,7 @@ start_gpsd() {
     fi
 
     echo "Launching gpsd in background..."
-    GPSD_CMD="$GPSD -P $GPSD_PID -D5 -N -n -S $GPSPORT $device"
+    GPSD_CMD="$GPSD_BIN -P $GPSD_PID -D5 -N -n -S $GPSPORT $device"
     $GPSD_CMD >/dev/null 2>"$GPSD_LOG" &
     echo $! > "$GPSD_PID"
     echo "gpsd launched. PID saved to $GPSD_PID."
