@@ -26,6 +26,7 @@ if [ ! -f ~/.frameflow_profile ]; then
 	echo "AUDIODEV='card.*USB'" >> ~/.frameflow_profile
 	echo "# Define the API endpoint URL" >> ~/.frameflow_profile
 	echo "#API_URL=\"http://your-server-ip:3000/update-gps\"" >> ~/.frameflow_profile
+	echo "#AUTH_TOKEN=\"<your api token>\"" >> ~/.frameflow_profile
  	echo "# IF You wish to change PATH, be sure that You have write rights there." >> ~/.frameflow_profile
 	echo "VLXsuite_DIR=\"${VLXsuite_DIR}\"" >> ~/.frameflow_profile
 	echo "VLXlogs_DIR=\"${VLXlogs_DIR}\"" >> ~/.frameflow_profile
