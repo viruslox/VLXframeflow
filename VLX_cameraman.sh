@@ -86,7 +86,7 @@ start() {
 	fi
 
 	echo "Launching FFmpeg in background..."
-    $FFMPEG_CMD >/dev/null 2>"$LOG_FILE" &
+    mptcpize run $FFMPEG_CMD >/dev/null 2>"$LOG_FILE" &
     echo $! > "$PID_FILE"
 
     sleep 1
