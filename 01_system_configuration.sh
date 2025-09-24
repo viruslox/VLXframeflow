@@ -123,7 +123,7 @@ if [[ -f /home/pkg.list ]]; then
         xargs -a /home/pkg.list apt-get -y install
     fi
 fi
-apt-get -y install ffmpeg libavdevice-dev libcamera-dev libcamera-tools libcamera-v4l2 dov4l dv4l qv4l2 v4l-conf v4l-utils uvccapture libuvc-dev uvcdynctrl gpsd gpsd-clients jq git hostapd systemd-resolved
+apt-get -y install ffmpeg libavdevice-dev libcamera-dev libcamera-tools libcamera-v4l2 dov4l dv4l qv4l2 v4l-conf v4l-utils uvccapture libuvc-dev uvcdynctrl gpsd gpsd-clients jq git hostapd systemd-resolved wireless-tools ufw postfix
 
 ## Reorder passwd file and get unprileged users list
 pwck -s
