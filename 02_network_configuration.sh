@@ -156,7 +156,7 @@ systemctl daemon-reload
 systemctl disable NetworkManager
 systemctl enable systemd-networkd
 systemctl enable systemd-resolved
-systemctl enable mptcpd
+systemctl enable mptcp
 
 ufw reload
 ufw enable
