@@ -5,20 +5,15 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-if ! sysctl net.mptcp.enabled; then
-	echo "The running kernel does not support multi point TCP"
-fi
 if ! sysctl net.mptcp.enabled &> /dev/null; then
-    echo "[ERR] The running kernel does not support multi point TCP."
+    echo "[ERR] The running kernel does not support Multipoint TCP."
     exit 1
+elif [ "$(sysctl -n net.mptcp.enabled)" -eq 0 ]; then
+    echo "[WARN] MPTCP is not enabled. Enabling it now."
+    sysctl -w net.mptcp.enabled=1
+    echo "[OK] MPTCP enabled."
 else
-    if [ "$(sysctl -n net.mptcp.enabled)" -eq 1 ]; then
-        echo "[OK] MPTCP enabled."
-    else
-        echo "[WARN] MPTCP currently not enabled."
-        sysctl -w net.mptcp.enabled=1
-		echo "[OK] MPTCP enabled."
-    fi
+    echo "[OK] MPTCP is already enabled."
 fi
 
 NORM_PROFILE="/etc/systemd/network/profiles/normal"
