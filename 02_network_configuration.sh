@@ -161,14 +161,20 @@ Name=$iface
 
 [Network]
 DHCP=yes
+
+[Address]
+MPTCPSubflow=no
 EOF
 
-cat <<EOF > $AP_PROFILE/30-$iface-bond.network
+cat <<EOF > $AP_PROFILE/30-$iface-mptcp.network
 [Match]
 Name=$iface
 
 [Network]
-Bond=bond0
+DHCP=yes
+
+[Address]
+MPTCPSubflow=yes
 EOF
     fi
 done
