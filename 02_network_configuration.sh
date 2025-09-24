@@ -149,6 +149,32 @@ ExecStart=/usr/sbin/hostapd -P /run/hostapd.pid $DAEMON_OPTS ${DAEMON_CONF}
 WantedBy=multi-user.target
 EOF
 
+## for each interface create profiles
+for iface in $(ls /sys/class/net); do
+    if [ "$iface" == "lo" ]; then
+        continue
+    elif [[ "$iface" != *bond* && ! -d "/sys/class/net/$iface/wireless" ]]; then
+## Ethernet and USB net interfaces
+cat <<EOF > $NORM_PROFILE/10-$iface.network
+[Match]
+Name=$iface
+
+[Network]
+DHCP=yes
+EOF
+
+cat <<EOF > $AP_PROFILE/30-$iface-bond.network
+[Match]
+Name=$iface
+
+[Network]
+Bond=bond0
+EOF
+    fi
+done
+
+
+
 ## Enable the new settings
 apt-get update
 apt-get -y install mptcpd
@@ -156,6 +182,14 @@ systemctl daemon-reload
 systemctl disable NetworkManager
 systemctl enable systemd-networkd
 systemctl enable systemd-resolved
+
+
+sed -i \
+-e 's/^#* *path-manager=.*/path-manager=default/' \
+-e 's/^#* *load-plugins=.*/load-plugins=addr_adv/' \
+-e 's/^#* *addr-flags=.*/addr-flags=subflow,signal,fullmesh/' \
+/etc/mptcpd/mptcpd.conf
+
 systemctl enable mptcp
 
 ufw reload
