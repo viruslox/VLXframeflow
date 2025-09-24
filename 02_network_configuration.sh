@@ -26,16 +26,13 @@ cp -p /etc/ufw/before.rules /etc/ufw/before.rules.BK
 
 if ! grep -qF "VLXframelow NAT table rules" /etc/ufw/before.rules; then
 	cat <<EOF > /etc/ufw/before.rules.add
-	# VLXframelow NAT table rules
-	*nat
-	:POSTROUTING ACCEPT [0:0]
-
-	# MODIFICA: Regola MASQUERADE generale per tutte le interfacce in uscita
-	-A POSTROUTING -s 192.168.168.0/24 -j MASQUERADE
-
-	COMMIT
-	# End of VLXframeflow NAT rules
-	EOF
+# VLXframelow NAT table rules
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s 192.168.168.0/24 -j MASQUERADE
+COMMIT
+# End of VLXframeflow NAT rules
+EOF
 
 	cat /etc/ufw/before.rules.add /etc/ufw/before.rules.BK > /etc/ufw/before.rules
 fi
