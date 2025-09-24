@@ -127,7 +127,7 @@ EOF
 	fi
 done
 
-cat <<EOF > /etc/systemd/system/hostapd.service
+cat <<'EOF' > /etc/systemd/system/hostapd.service
 [Unit]
 Description=Access point and authentication server for Wi-Fi and Ethernet
 Documentation=man:hostapd(8)
