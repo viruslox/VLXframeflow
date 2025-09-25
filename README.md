@@ -1,4 +1,5 @@
-# VLXframeflow: All-in-One Video Streaming and GPS Tracking
+# VLXframeflow: 
+# All-in-One Video Streaming and GPS Tracking
 
 ****VLXframeflow**** is a suite of shell scripts designed to transform 
 any Debian-based single-board computer (SBC) into an high-availabilty
