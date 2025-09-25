@@ -1,133 +1,73 @@
-# VLXframeflow
+# VLXframeflow: All-in-One Video Streaming and GPS Tracking
 
-****VLXframeflow**** is a suite of shell scripts designed to configure a
-Debian-based system for multi-camera video streaming and real-time GPS
-tracking. It includes tools for initial system setup, OS installation on
-NVMe drives, and managing **ffmpeg** streams and **gpsd** services.
+****VLXframeflow**** is a suite of shell scripts designed to transform 
+any Debian-based single-board computer (SBC) into an high-availabilty
+router, multi-camera video streaming and real-time GPS tracking device.
 
-This project is ideal for transforming single-board computers or other
-embedded hardware into dedicated streaming and tracking devices for
-mobile applications.
+This suite is built for work on mobility, streaming and tracking.
 
-## Components
+## Features
 
--   ****NVMe OS Installer (******nvme_installer.sh******):**** A utility
-    to partition, format, and clone the existing operating system to a
-    high-speed NVMe drive, including correct **fstab** and boot
-    configuration. ****(Warning: This script will wipe the selected
-    drive).****
--   ****System Configuration (******system_configuration.sh******):****
-    Automatically sets up Debian repositories (**testing**,
-    **multimedia**), installs essential packages like **ffmpeg**,
-    **gpsd**, and **v4l-utils**, and creates a dedicated user for
-    running the services.
--   ****Camera Streaming (******cameraman.sh******):**** Manages
-    multiple video camera streams using **ffmpeg**. It can handle
-    multiple V4L2 devices, capture audio, and stream the output to a
-    configured RTSP URL.
--   ****GPS Tracking (******gps_tracker.sh******):**** Manages the
-    **gpsd** service to read data from a connected GPS device (like a
-    USB GPS module) and sends it as a video source to a
-    specified RTSP relay.
+-   ****Multi Network Bonding:**** Self-recognizes and configure multiple
+      internet connections to increase bandwitch and fault tollerance.
+-   ****Multi-Camera Support:**** Manage and stream from multiple USB
+      and HDMI-IN V4L2 video devices.
+-   ****Streaming:**** Utilizes ffmpeg to encode and stream video and
+      audio to RTSP or RTMP servers.
+-   ****GPS Tracking:**** Can recognize GPS antenna then capture, send
+      GPS data (position, speed, altitude) to API relay.
+-   ****Simplified Setup:**** Includes scripts to install the operating
+      system on a high-speed NVMe or eMMc.
 
+****VLXframeflow**** is designed for anyone who needs reliable video and data
+transmission from a mobile environment.
+****Be Dynamic**** thanks Multi-Camera Content to switch between.
+****Stay Stable**** combining multiple internet connections (requires 4G/5G modems).
+****Location-Aware**** built-in GPS tracking to create location data overlays.
 
-## Installation and Update
+## For the Commuting Professional
+Stay productive and connected when traveling. You can attend meetings
+while on a train or in a vehicle trip.
 
-### Step 1: (Optional) Install OS on NVMe (Run as root)
-If you want to run your operating system from a faster NVMe drive, this
-script will automate the entire process.
+## For IRL Streamers
+Take your live streams to the PRO level. With VLXframeflow on an SBC, You can
+connect your cameras in a pre-assembled and compact, wearable streaming rig.
 
-****WARNING:**** This script will completely erase all data on the NVMe
-drive you select. Proceed with caution.
+## For Transportation and Fleet Management
+Equip your fleet with a monitoring solution. Track the precise location of every
+vehicle through the integrated GPS tracker, sending data to your own API endpoint.
 
-### Step 2: System Configuration (Run as root)
-/system_configuration.sh
+## Enhanced Phisical Security and Compliance
+Use the multi-camera system as a sophisticated dashcam setup to record all angles,
+providing evidence in case of issues, events, encounters.
 
-This script will:
+## Getting Started
+### (Optional) Install OS on NVMe (Run as root)
+00_nvme_installer.sh clones your OS to a fast NVMe drive. 
+Warning: This will erase the target drive.
 
-1.  Update your **apt** sources to include testing and multimedia
-    repositories.
-2.  Install all necessary software packages.
-3.  Prompt you to select an existing user or create a new dedicated user
-    (**frameflow** by default) to run the services.
+### System Configuration: (Run as root)
+01_system_configuration.sh will update your system, install all required packages 
+like ffmpeg, gpsd, hostapd and create a dedicated user to run the services.
 
-### Step 3: Initial Script Setup (Run as the dedicated user)
+### Network Configuration: (Run as root)
+02_network_configuration.sh creates networks and systemd network profiles
 
-Log in as the user you selected or created in Step 2. Then, run the main
-**frameflow.sh** script to create the initial configuration file.
+### Suite configuration
+03_frameflow_update.sh creates the initial configuration file at ~/.frameflow_profile
 
-### Step 4: Edit the Configuration File
+### Edit Configuration
+Open ~/.frameflow_profile with a text editor and customize the variables 
+(RTSP server URL, enabled devices, API endpoints) to match your setup.
 
-Now, open the newly created profile in your home directory
-(**\~/.frameflow_profile**) and edit the variables to match your setup.
-
-**nano \~/.frameflow_profile**
-
-****Example Configuration:****
-
-**\# if zero means not enabled; 1 means enable only the first device
-found, 2 only the first 2 devices found\...**
-
-**ENABLED_DEVICES=2**
-
-**\# The base URL for your RTSP server. The script will append \"\_1\",
-\"\_2\", etc.**
-
-**RTSP_URL=\"rtsps://\[your.server.com:8554/mystream\](https://your.server.com:8554/mystream)\"**
-
-**\# Regex to find the audio input device (usually a USB HDMI adapter)**
-
-**AUDIODEV=\'card.\*USB\'**
-
-**\# The API endpoint for sending GPS data**
-
-**API_URL=\"\[http://your-api-server.com:3000/update-gps\](http://your-api-server.com:3000/update-gps)\"**
+### Run the Services: start, stop, and check the status
+- VLX_cameraman.sh (video input devices)
+- VLX_gps_tracker.sh (sends positions via API)
+- VLX_netflow.sh (switch network profiles)
 
 
-## Usage
-
-All scripts should be run by the dedicated user.
-
-### Managing Camera Streams
-
-Use the **cameraman.sh** script to control your video streams.
-
-**\# Start streaming from the first camera**
-
-**./cameraman.sh 1 start**
-
-**\# Check the status of the first camera\'s stream**
-
-**./cameraman.sh 1 status**
-
-**\# Stop the stream**
-
-**./cameraman.sh 1 stop**
-
-### Managing GPS Tracking
-
-First, start the GPS tracker, then run the API script to begin sending
-data.
-
-**\# Start the gpsd service**
-
-**./gps_tracker.sh start**
-
-**\# Check the status**
-
-**./gps_tracker.sh status**
-
-## Future Development (To-Do)
-
+## Future Development
 This project is under active development. Planned features include:
-
--   ****Network Bonding:**** Implement network interface bonding to
-    combine multiple connections (e.g., Ethernet, Wi-Fi, 4G) for
-    improved reliability and bandwidth.
--   ****Systemd Integration:**** Complete the automatic creation and
-    management of systemd service files for **cameraman** and
-    **gps_tracker** to ensure they run on boot.
--   ****Improved Error Handling:**** Add more robust checks and error
-    handling throughout all scripts.
--   ****Web Interface:**** A simple web-based dashboard for status
-    monitoring and control.
+- Web Interface: A web-based dashboard for status monitoring and control.
+- Improved Error Handling: More robust checks and error reporting.
+- Increase the automation and improve the automatisms. 
