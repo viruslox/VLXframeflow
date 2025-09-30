@@ -175,6 +175,10 @@ DHCP=yes
 
 [Address]
 MPTCPSubflow=yes
+
+[Route]
+Gateway=_dhcp4
+Metric=100
 EOF
     fi
 done
