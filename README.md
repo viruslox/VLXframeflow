@@ -1,24 +1,27 @@
 # VLXframeflow: 
 # All-in-One Video Streaming and GPS Tracking
 
-****VLXframeflow**** is a suite of shell scripts designed to transform 
-any Debian-based single-board computer (SBC) into an high-availabilty
-router, multi-camera video streaming and real-time GPS tracking device.
+****VLXframeflow**** is a suite of shell scripts designed to transform any
+Debian-based single-board computer (SBC) into a high-availabilty router,
+a multi-camera video streaming encoder and real-time GPS tracking device.
 
 This suite is built for work on mobility, streaming and tracking.
 
 ## Features
 
--   ****Multi Network Bonding:**** Self-recognizes and configure multiple
-      internet connections to increase bandwitch and fault tollerance.
--   ****Multi-Camera Support:**** Manage and stream from multiple USB
-      and HDMI-IN V4L2 video devices.
+-   ****Multi Network Bonding:**** Automatically detects and configures
+      multiple internet connections (like 4G/5G modems) to increase total
+      bandwitch and provide seamless fault tolerance.
+-   ****Multi-Camera Support:**** Manage and stream from multiple V4L2
+      video devices simultaneously, including webcams and HDMI capture cards
 -   ****Streaming:**** Utilizes ffmpeg to encode and stream video and
-      audio to RTSP or RTMP servers.
--   ****GPS Tracking:**** Can recognize GPS antenna then capture, send
-      GPS data (position, speed, altitude) to API relay.
+      audio to any RTSP or RTMP server (including Twitch and YouTube)
+-   ****GPS Tracking:**** Automatically detects a connected GPS device
+      and sends location, speed, and altitude to a specified API endpoint.
 -   ****Simplified Setup:**** Includes scripts to install the operating
-      system on a high-speed NVMe or eMMc.
+      system on a high-speed NVMe or eMMc drives.
+
+## Use Cases & Applications
 
 ****VLXframeflow**** is designed for anyone who needs reliable video and data
 transmission from a mobile environment.
