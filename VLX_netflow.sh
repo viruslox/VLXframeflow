@@ -26,10 +26,12 @@ systemctl restart systemd-networkd
 
 if [ "$PROFILE_NAME" = "normal" ]; then
     sleep 2
+    ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
     systemctl enable wpa_supplicant@$WIFI_IF.service
     systemctl start wpa_supplicant@$WIFI_IF.service
 elif [ "$PROFILE_NAME" = "ap-bonding" ]; then
-    sleep 2 
+    sleep 2
+    ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
     systemctl enable hostapd
     systemctl start hostapd
 fi
