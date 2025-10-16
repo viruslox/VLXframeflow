@@ -18,9 +18,9 @@ if [ -z "$PROFILE_NAME" ] || [ ! -d "$PROFILES_PATH/$PROFILE_NAME" ] ; then
 fi
 
 systemctl stop hostapd
-systemctl stop wpa_supplicant@$WIFI_IF.service
+systemctl stop "wpa_supplicant@$WIFI_IF.service"
 systemctl disable hostapd
-systemctl disable wpa_supplicant@$WIFI_IF.service
+systemctl disable "wpa_supplicant@$WIFI_IF.service"
 
 # Clean systemd network settings
 rm -f /etc/systemd/network/*.network /etc/systemd/network/*.netdev
@@ -33,8 +33,8 @@ systemctl restart systemd-networkd
 
 if [ "$PROFILE_NAME" = "normal" ]; then
     ln -sf /run/systemd/resolve/resolv.conf /etc/resolv.conf
-    systemctl enable wpa_supplicant@$WIFI_IF.service
-    systemctl start wpa_supplicant@$WIFI_IF.service
+    systemctl enable "wpa_supplicant@$WIFI_IF.service"
+    systemctl start "wpa_supplicant@$WIFI_IF.service"
 elif [ "$PROFILE_NAME" = "ap-bonding" ]; then
     ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
     systemctl enable hostapd
