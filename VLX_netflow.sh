@@ -1,6 +1,7 @@
 #!/bin/bash
 
 PROFILE_NAME=$1
+PROFILES_PATH="/etc/systemd/network/profiles"
 # Sort all interfaces, pickup only the first wi-fi interface.
 WIFI_IF=$(ls /sys/class/net/ | while read iface; do [ -d "/sys/class/net/$iface/wireless" ] && echo $iface && break; done)
 
