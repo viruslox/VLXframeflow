@@ -21,43 +21,43 @@ fi
 touch "$PROFILE_FILE"
 
 # Check for VLXsuite_DIR
-if ! grep -q "^VLXsuite_DIR=" "$PROFILE_FILE"; then
+if ! grep -q "VLXsuite_DIR=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'VLXsuite_DIR' to profile."
     echo -e "\n# IF You wish to change PATH, be sure that You have write rights there." >> "$PROFILE_FILE"
     echo "VLXsuite_DIR=\"${VLXsuite_DIR}\"" >> "$PROFILE_FILE"
 fi
 
 # Check for VLXlogs_DIR
-if ! grep -q "^VLXlogs_DIR=" "$PROFILE_FILE"; then
+if ! grep -q "VLXlogs_DIR=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'VLXlogs_DIR' to profile."
     echo -e "\nVLXlogs_DIR=\"${VLXlogs_DIR}\"" >> "$PROFILE_FILE"
 fi
 
-if ! grep -q "^ENABLED_DEVICES=" "$PROFILE_FILE"; then
+if ! grep -q "ENABLED_DEVICES=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'ENABLED_DEVICES' to profile."
     echo -e "\n# if zero means not enabled; 1 means enable only the first device found, 2 only the first 2 devices found..." >> "$PROFILE_FILE"
     echo "ENABLED_DEVICES=0" >> "$PROFILE_FILE"
 fi
 
-if ! grep -q "^RTSP_URL=" "$PROFILE_FILE"; then
+if ! grep -q "RTSP_URL=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'RTSP_URL' to profile."
     echo -e "\nRTSP_URL=\"rtsps://<host>:<port>/<path>/<key>\"" >> "$PROFILE_FILE"
 fi
 
 # Check for AUDIODEV
-if ! grep -q "^AUDIODEV=" "$PROFILE_FILE"; then
+if ! grep -q "AUDIODEV=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'AUDIODEV' to profile."
     echo -e "\n# This is used to select the "microfone" which pickup the audio, usually it works with USB - HDMI-IN adapters" >> "$PROFILE_FILE"
     echo "AUDIODEV='card.*USB'" >> "$PROFILE_FILE"
 fi
 
-if ! grep -q "^#API_URL=" "$PROFILE_FILE"; then
+if ! grep -q "API_URL=" "$PROFILE_FILE"; then
     echo "[INFO] Adding placeholder for 'API_URL' to profile."
     echo -e "\n# Define the "GPS overlay" API endpoint URL" >> "$PROFILE_FILE"
     echo "#API_URL=\"http://your-server-ip:3000/update-gps\"" >> "$PROFILE_FILE"
 fi
 
-if ! grep -q "^#AUTH_TOKEN=" "$PROFILE_FILE"; then
+if ! grep -q "AUTH_TOKEN=" "$PROFILE_FILE"; then
     echo "[INFO] Adding placeholder for "GPS overlay" 'AUTH_TOKEN' to profile."
     echo -e "\n#AUTH_TOKEN=\"<your api token>\"" >> "$PROFILE_FILE"
 fi
