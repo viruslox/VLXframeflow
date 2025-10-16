@@ -5,9 +5,15 @@ PROFILE_NAME=$1
 WIFI_IF=$(ls /sys/class/net/ | while read iface; do [ -d "/sys/class/net/$iface/wireless" ] && echo $iface && break; done)
 
 ## Validate input args
-PROFILE_PATH="/etc/systemd/network/profiles/$PROFILE_NAME"
-if [ -z "$PROFILE_NAME" ] || [ ! -d "$PROFILE_PATH" ]; then
+PROFILES_PATH="/etc/systemd/network/profiles"
+if [ ! -d "$PROFILES_PATH/$PROFILE_NAME" ]; then
     echo "[ERR] Please give a valid profile name"
+    echo "[INFO]: Existing profiles:"
+    for profile in "$PROFILES_PATH"/*; do
+        if [ -d "$profile" ]; then
+            echo "  - $(basename "$profile")"
+        fi
+    done
     exit 1
 fi
 
@@ -20,7 +26,7 @@ systemctl disable wpa_supplicant@$WIFI_IF.service
 rm -f /etc/systemd/network/*.network /etc/systemd/network/*.netdev
 
 # Copy profiles settings
-cp "$PROFILE_PATH"/* /etc/systemd/network/
+cp "$PROFILES_PATH"/* /etc/systemd/network/
 
 systemctl restart systemd-networkd
 
