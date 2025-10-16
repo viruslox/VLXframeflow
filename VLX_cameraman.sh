@@ -78,7 +78,7 @@ start() {
         unset AUDIOCAM AUDIOCOD
     fi
     
-	FFMPEG_CMD="$FFMPEG_CMD -f v4l2 -framerate 30 -video_size 1920x1080 -i ${videodevlist[$CAMERA]} ${AUDIOCAM} -c:v libx264 -pix_fmt yuv420p -preset superfast -b:v 600k ${AUDIOCOD} -f rtsp ${RTSP_URL}_$1"
+	FFMPEG_CMD="mptcpize run $FFMPEG_CMD -f v4l2 -framerate 30 -video_size 1920x1080 -i ${videodevlist[$CAMERA]} ${AUDIOCAM} -c:v libx264 -pix_fmt yuv420p -preset superfast -b:v 600k ${AUDIOCOD} -f rtsp ${RTSP_URL}_$1"
 
 	if [ -z "${videodevlist[$CAMERA]}" ]; then
 		echo "[ERR] Video device ${videodevlist[$CAMERA]} not found!"
@@ -86,7 +86,7 @@ start() {
 	fi
 
 	echo "Launching FFmpeg in background..."
-    mptcpize run $FFMPEG_CMD >/dev/null 2>"$LOG_FILE" &
+    $FFMPEG_CMD >/dev/null 2>"$LOG_FILE" &
     echo $! > "$PID_FILE"
 
     sleep 1
