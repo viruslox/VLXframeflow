@@ -19,18 +19,18 @@ fi
 
 NORM_PROFILE="/etc/systemd/network/profiles/normal"
 AP_PROFILE="/etc/systemd/network/profiles/ap-bonding"
-mkdir -p $NORM_PROFILE $AP_PROFILE
+mkdir -p "$NORM_PROFILE" "$AP_PROFILE"
 
 ufw allow 22/tcp
 sed -i '/^DEFAULT_FORWARD_POLICY/c\DEFAULT_FORWARD_POLICY="ACCEPT"' /etc/default/ufw
 
 if [ ! -f /etc/ufw/before.rules.BK ]; then
-	cp -p /etc/ufw/before.rules /etc/ufw/before.rules.BK
+    cp -p /etc/ufw/before.rules /etc/ufw/before.rules.BK
 fi
 
 if ! grep -qF "VLXframelow NAT table rules" /etc/ufw/before.rules; then
-	echo "[INFO]: Updating UFW settings with NAT rules"
-	NAT_RULES=$(cat <<EOF
+    echo "[INFO]: Updating UFW settings with NAT rules"
+    NAT_RULES=$(cat <<EOF
 # VLXframelow NAT table rules
 *nat
 :POSTROUTING ACCEPT [0:0]
@@ -39,7 +39,7 @@ COMMIT
 # End of VLXframeflow NAT rules
 EOF
 )
-	echo -e "$NAT_RULES\n$(cat /etc/ufw/before.rules)" > /etc/ufw/before.rules
+    echo -e "$NAT_RULES\n$(cat /etc/ufw/before.rules)" > /etc/ufw/before.rules
 fi
 
 ## for each interface create profiles
@@ -63,8 +63,8 @@ MPTCPSubflow=no
 EOF
 
     if [[ "$iface" == "${INTERFACES[0]}" ]]; then
-		ufw allow in on $iface from any port 68 to any port 67 proto udp
-		ufw allow in on $iface from any to any port 53
+        ufw allow in on "$iface" from any port 68 to any port 67 proto udp
+        ufw allow in on "$iface" from any to any port 53
         cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
 [Match]
 Name=$iface
@@ -99,26 +99,35 @@ wpa_pairwise=CCMP
 rsn_pairwise=CCMP
 EOF
 
-    WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
-    cp -p "$WPA_CONF" "${WPA_CONF}_$(date +%Y-%m-%d_%Hh%Mm)" 2>/dev/null
+        WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
 
-    for knownwlans in /etc/NetworkManager/system-connections/*; do
-        if grep -q 'type=wifi' "$knownwlans"; then
-            SSID=$(grep -oP 'ssid=\K.*' "$knownwlans")
-            PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
-
-            if [ -n "$SSID" ] && [ -n "$PSK" ]; then
-                echo 'network={' >> "$WPA_CONF"
-                echo "    ssid=\"$SSID\"" >> "$WPA_CONF"
-                echo "    psk=\"$PSK\"" >> "$WPA_CONF"
-                echo '}' >> "$WPA_CONF"
-            fi
+        if [ ! -f "$WPA_CONF" ]; then
+            echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
+            echo "update_config=1" >> "$WPA_CONF"
         fi
-    done
-    
-    systemctl enable "wpa_supplicant@$iface.service"
-	else
-	    cat <<EOF > "$AP_PROFILE/20-$iface.network"
+
+        for knownwlans in /etc/NetworkManager/system-connections/*; do
+            if grep -q 'type=wifi' "$knownwlans"; then
+                SSID=$(grep -oP 'ssid=\K.*' "$knownwlans")
+                PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
+
+                # Aggiunge la rete SOLO SE SSID e PSK esistono E l'SSID non è già nel file.
+                if [ -n "$SSID" ] && [ -n "$PSK" ] && ! grep -q -F "ssid=\"$SSID\"" "$WPA_CONF"; then
+                    echo "[INFO] Aggiunta nuova rete '$SSID' a $WPA_CONF"
+                    cat <<EONET >> "$WPA_CONF"
+
+network={
+    ssid="$SSID"
+    psk="$PSK"
+}
+EONET
+                fi
+            fi
+        done
+        
+        systemctl enable "wpa_supplicant@$iface.service"
+    else
+        cat <<EOF > "$AP_PROFILE/20-$iface.network"
 [Match]
 Name=$iface
 
@@ -129,7 +138,7 @@ WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
 [Address]
 MPTCPSubflow=no
 EOF
-	fi
+    fi
 done
 
 cat <<'EOF' > /etc/systemd/system/hostapd.service
@@ -140,14 +149,11 @@ After=network.target
 ConditionFileNotEmpty=/etc/hostapd/hostapd.conf
 
 [Service]
-#Type=forking
 Type=exec
-#PIDFile=/run/hostapd.pid
 Restart=on-failure
 RestartSec=2
 Environment=DAEMON_CONF=/etc/hostapd/hostapd.conf
 EnvironmentFile=-/etc/default/hostapd
-#ExecStart=/usr/sbin/hostapd -B -P /run/hostapd.pid $DAEMON_OPTS ${DAEMON_CONF}
 ExecStart=/usr/sbin/hostapd -P /run/hostapd.pid $DAEMON_OPTS ${DAEMON_CONF}
 
 [Install]
@@ -160,7 +166,7 @@ for iface in $(ls /sys/class/net); do
         continue
     elif [[ "$iface" != *bond* && ! -d "/sys/class/net/$iface/wireless" ]]; then
 ## Ethernet and USB net interfaces
-cat <<EOF > $NORM_PROFILE/10-$iface.network
+cat <<EOF > "$NORM_PROFILE/10-$iface.network"
 [Match]
 Name=$iface
 
@@ -171,7 +177,7 @@ DHCP=yes
 MPTCPSubflow=no
 EOF
 
-cat <<EOF > $AP_PROFILE/30-$iface-mptcp.network
+cat <<EOF > "$AP_PROFILE/30-$iface-mptcp.network"
 [Match]
 Name=$iface
 
@@ -188,16 +194,13 @@ EOF
     fi
 done
 
-
-
 ## Enable the new settings
 apt-get update
-apt-get -y install mptcpd
+apt-get -y install mptcpd hostapd
 systemctl daemon-reload
 systemctl disable NetworkManager
 systemctl enable systemd-networkd
 systemctl enable systemd-resolved
-
 
 sed -i \
 -e 's/^#* *path-manager=.*/path-manager=default/' \
