@@ -80,6 +80,9 @@ if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
 		fi
 	fi
 
+	# Download Armbian keyring
+	wget -qO- https://imola.armbian.com/apt/armbian.key | gpg --dearmor | tee /usr/share/keyrings/armbian.gpg > /dev/null
+
 	# Redundant, but hopefully it fixes most of the possible errors from previous steps
     apt -y update
     apt -y install aptitude apt dpkg
@@ -94,9 +97,9 @@ if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
 	# Reconfiguring APT
     APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
 	DEBMLTMEDIA_FILE="/etc/apt/sources.list.d/unofficial-multimedia-packages.sources"
+	ARMBIAN_FILE="/etc/apt/sources.list.d/armbian-beta.sources"
  
     cat <<EOF > $APTGET_FILE
-# Modernized from /etc/apt/sources.list
 Types: deb
 URIs: https://deb.debian.org/debian/
 Suites: testing
@@ -127,12 +130,19 @@ EOF
 
 
 	cat <<EOF > $DEBMLTMEDIA_FILE
-# Modernized from /etc/apt/sources.list
 Types: deb
 URIs: https://www.deb-multimedia.org/
 Suites: testing
 Components: main non-free
 Signed-By: /usr/share/keyrings/deb-multimedia-keyring.pgp
+EOF
+
+	cat <<EOF > $ARMBIAN_FILE
+Types: deb
+URIs: http://beta.armbian.com/
+Suites: sid
+Components: main sid-utils sid-desktop
+Signed-By: /usr/share/keyrings/armbian.gpg
 EOF
 
 else
