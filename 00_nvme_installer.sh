@@ -1,6 +1,7 @@
 #!/bin/bash
 
-## This script is created and tested to install Raspbian/Debian on Raspberry PI3b+/PI4b/PI5 NVME drives from Raspian on SD
+## This script installs a Debian-based OS (like Raspberry Pi OS) onto an NVMe or eMMC drive.
+## It must be run from a live system (e.g., Raspberry Pi OS, Armbian) booted from an SD card.
 ## In case You're in doubt, You can start from "Rapberry Pi OS Lite (64-bit)" - compatible with Raspberry Pi3/4/400/5
 ## - The script is also compatible with OrangePi5 and Radxa Rock5 if running Debian or Armbian on SD
 
@@ -13,10 +14,10 @@ echo "[INFO]: Enable user root: Set the root user password."
 passwd root
 systemctl enable --now ssh
 
-mapfile -t DEVICES < <(lsblk -p -d -n -o NAME | grep 'nvme')
+mapfile -t DEVICES < <(lsblk -p -d -n -o NAME | grep -E 'nvme|mmcblk')
 
 if [ ${#DEVICES[@]} -eq 0 ]; then
-    echo "[INFO]: No NVMe devices found. Exit."
+    echo "[INFO]: No NVMe/eMMc devices found. Exit."
     exit 0
 fi
 
