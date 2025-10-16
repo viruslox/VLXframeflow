@@ -46,7 +46,7 @@ for file in "${getty_file[@]}"; do
     fi
 done
 
-
+echo "We're about to reconfigure the whole OS including uninstall Desktop apps and graphical GUI - You can skip this step"
 read -r -p "Do you want to perform a full system update and reconfigure APT sources? (Y/n) " response
 if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
     apt -y purge qt* *gtk* adwaita*
@@ -173,13 +173,13 @@ else
 fi
 
 # Check if the cron job already exists to avoid duplicates
-if ! crontab -l 2>/dev/null | grep -qF "$CRON_GPS start"; then
+if ! crontab -l 2>/dev/null | grep -qF "$CRON_script"; then
     # Use a subshell to safely add the new job to the existing crontab
     (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab -
     if [ $? -eq 0 ]; then
         echo "Cron job updated"
         echo "New crontab entries:"
-        crontab -l | grep --color=auto "$CRON_GPS start"
+        crontab -l | grep --color=auto "$CRON_script start"
     else
         echo "[ERR] Failed to add the cron job." >&2
         exit 1
