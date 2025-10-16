@@ -5,6 +5,7 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+# Enable MPTCP
 if ! sysctl net.mptcp.enabled &> /dev/null; then
     echo "[ERR] The running kernel does not support Multipoint TCP."
     exit 1
@@ -22,10 +23,14 @@ mkdir -p $NORM_PROFILE $AP_PROFILE
 
 ufw allow 22/tcp
 sed -i '/^DEFAULT_FORWARD_POLICY/c\DEFAULT_FORWARD_POLICY="ACCEPT"' /etc/default/ufw
-cp -p /etc/ufw/before.rules /etc/ufw/before.rules.BK
+
+if [ ! -f /etc/ufw/before.rules.BK ]; then
+	cp -p /etc/ufw/before.rules /etc/ufw/before.rules.BK
+fi
 
 if ! grep -qF "VLXframelow NAT table rules" /etc/ufw/before.rules; then
-	cat <<EOF > /etc/ufw/before.rules.add
+	echo "[INFO]: Updating UFW settings with NAT rules"
+	NAT_RULES=$(cat <<EOF
 # VLXframelow NAT table rules
 *nat
 :POSTROUTING ACCEPT [0:0]
@@ -33,8 +38,8 @@ if ! grep -qF "VLXframelow NAT table rules" /etc/ufw/before.rules; then
 COMMIT
 # End of VLXframeflow NAT rules
 EOF
-
-	cat /etc/ufw/before.rules.add /etc/ufw/before.rules.BK > /etc/ufw/before.rules
+)
+	echo -e "$NAT_RULES\n$(cat /etc/ufw/before.rules)" > /etc/ufw/before.rules
 fi
 
 ## for each interface create profiles
@@ -203,7 +208,7 @@ sed -i \
 systemctl enable mptcp
 
 ufw reload
-ufw enable
+ufw --force enable
 echo "Now You should restart to give a try - ...keep monitor and keyboard on Your arm lenght range :D"
 
 exit 0
