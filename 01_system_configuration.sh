@@ -12,6 +12,8 @@ VLXlogs_DIR="/opt/VLXflowlogs"
 CRON_script="$VLXsuite_DIR/04_maintenance.sh"
 CRON_JOB="@reboot $CRON_script start 2>&1"
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
+ESSENTIAL_PACKAGES="$VLXlogs_DIR/essential_packages.list"
+PACKAGES_TO_PURGE="$VLXlogs_DIR/packages_to_purge.list"
 
 systemctl enable --now ssh
 systemctl unmask hostapd 
@@ -34,8 +36,30 @@ systemctl daemon-reload
 echo "We're about to reconfigure the whole OS including uninstall Desktop apps and graphical GUI - You can skip this step"
 read -r -p "Do you want to perform a full system update and reconfigure APT sources? (Y/n) " response
 if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
+	# Removing what's really not necessary
     apt -y purge qt* *gtk* adwaita*
     apt -y autoremove
+
+	# Removing what ever *is not* OS base
+	dpkg-query -Wf '${Package}\n' $(tasksel --task-packages standard) ssh aptitude > "$ESSENTIAL_PACKAGES"
+	dpkg --get-selections | awk '!/deinstall|hold/ {print $1}' | grep -vFf "$ESSENTIAL_PACKAGES" > "$PACKAGES_TO_PURGE"
+
+	if [ -s "$PACKAGES_TO_PURGE" ]; then
+	    echo "[WARNING]: Next packages will be removed including their configuration and settings:"
+	    cat "$PACKAGES_TO_PURGE"
+	    read -r -p "Do you agree? (y/N) " response
+	    if [[ "$response" =~ ^[yY]$ ]]; then
+	        echo "[INFO]: Purging packages..."
+	        xargs -a "$PACKAGES_TO_PURGE" apt-get -y purge
+	    else
+	        echo "[INFO]: Operation cancelled."
+	    fi
+	else
+	    echo "[INFO] There are no extra packages to be removed."
+	fi
+    apt -y autoremove
+
+	# Upgrading the OS base
     apt -y upgrade
     apt -y dist-upgrade
     apt -y autoremove
@@ -56,6 +80,7 @@ if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
 		fi
 	fi
 
+	# Redundant, but hopefully it fixes most of the possible errors from previous steps
     apt -y update
     apt -y install aptitude apt dpkg
     apt -y modernize-sources
@@ -66,6 +91,7 @@ if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
     aptitude -y purge '~o'
     aptitude -y purge '~c'
 
+	# Reconfiguring APT
     APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
 	DEBMLTMEDIA_FILE="/etc/apt/sources.list.d/unofficial-multimedia-packages.sources"
  
@@ -113,7 +139,7 @@ else
     echo "[INFO]: Skipping system update and APT reconfiguration as requested."
 fi
 
-
+# Let's setup all what we need
 apt --fix-broken install
 apt-get -y update
 if [[ -f /home/pkg.list ]]; then
