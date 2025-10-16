@@ -45,8 +45,6 @@ fi
 ## for each interface create profiles
 INTERFACES=($(iwconfig 2>/dev/null | grep 'IEEE' | awk '{print $1}'))
 
-# Modifica: Invece di uscire, stampa un avviso e continua.
-# Lo script potrà così configurare le interfacce Ethernet anche se non ci sono Wi-Fi.
 if [ ${#INTERFACES[@]} -eq 0 ]; then
     echo "[WARN] No wireless network interface found. Skipping Wi-Fi configuration."
 else
