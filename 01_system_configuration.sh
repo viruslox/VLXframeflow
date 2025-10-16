@@ -12,8 +12,6 @@ VLXlogs_DIR="/opt/VLXflowlogs"
 CRON_script="$VLXsuite_DIR/04_maintenance.sh"
 CRON_JOB="@reboot $CRON_script start 2>&1"
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
-ESSENTIAL_PACKAGES="$VLXlogs_DIR/essential_packages.list"
-PACKAGES_TO_PURGE="$VLXlogs_DIR/packages_to_purge.list"
 
 systemctl enable --now ssh
 systemctl unmask hostapd 
@@ -36,34 +34,17 @@ systemctl daemon-reload
 echo "We're about to reconfigure the whole OS including uninstall Desktop apps and graphical GUI - You can skip this step"
 read -r -p "Do you want to perform a full system update and reconfigure APT sources? (Y/n) " response
 if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
-	# Removing what's really not necessary
+
+	# Removing desktop / GUI packages
+	tasksel remove desktop gnome-desktop xfce-desktop kde-desktop cinnamon-desktop mate-desktop lxde-desktop lxqt-desktop
     apt -y purge qt* *gtk* adwaita*
-    apt -y autoremove
-
-	# Removing what ever *is not* OS base
-	dpkg-query -Wf '${Package}\n' $(tasksel --task-packages standard) ssh aptitude > "$ESSENTIAL_PACKAGES"
-	dpkg --get-selections | awk '!/deinstall|hold/ {print $1}' | grep -vFf "$ESSENTIAL_PACKAGES" > "$PACKAGES_TO_PURGE"
-
-	if [ -s "$PACKAGES_TO_PURGE" ]; then
-	    echo "[WARNING]: Next packages will be removed including their configuration and settings:"
-	    cat "$PACKAGES_TO_PURGE"
-	    read -r -p "Do you agree? (y/N) " response
-	    if [[ "$response" =~ ^[yY]$ ]]; then
-	        echo "[INFO]: Purging packages..."
-	        xargs -a "$PACKAGES_TO_PURGE" apt-get -y purge
-	    else
-	        echo "[INFO]: Operation cancelled."
-	    fi
-	else
-	    echo "[INFO] There are no extra packages to be removed."
-	fi
     apt -y autoremove
 
 	# Upgrading the OS base
     apt -y upgrade
     apt -y dist-upgrade
     apt -y autoremove
-	
+
 	# Finding the latest deb-multimedia-keyring version..."
 	KEYRING_PAGE_URL="https://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/"
 	LATEST_KEYRING_FILE=$(curl -s "$KEYRING_PAGE_URL" | grep -o 'deb-multimedia-keyring_[0-9.]*_all\.deb' | sort -V | tail -n 1)
@@ -81,7 +62,7 @@ if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
 	fi
 
 	# Download Armbian keyring
-	wget -qO- https://imola.armbian.com/apt/armbian.key | gpg --dearmor | tee /usr/share/keyrings/armbian.gpg > /dev/null
+	wget -qO- https://beta.armbian.com/armbian.key | gpg --dearmor | tee /usr/share/keyrings/armbian.gpg > /dev/null
 
 	# Redundant, but hopefully it fixes most of the possible errors from previous steps
     apt -y update
@@ -95,10 +76,10 @@ if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
     aptitude -y purge '~c'
 
 	# Reconfiguring APT
-    APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
+	APTGET_FILE="/etc/apt/sources.list.d/debian.sources"
 	DEBMLTMEDIA_FILE="/etc/apt/sources.list.d/unofficial-multimedia-packages.sources"
 	ARMBIAN_FILE="/etc/apt/sources.list.d/armbian-beta.sources"
- 
+
     cat <<EOF > $APTGET_FILE
 Types: deb
 URIs: https://deb.debian.org/debian/
@@ -139,7 +120,7 @@ EOF
 
 	cat <<EOF > $ARMBIAN_FILE
 Types: deb
-URIs: http://beta.armbian.com/
+URIs: https://beta.armbian.com/
 Suites: sid
 Components: main sid-utils sid-desktop
 Signed-By: /usr/share/keyrings/armbian.gpg
