@@ -44,13 +44,14 @@ fi
 
 ## for each interface create profiles
 INTERFACES=($(iwconfig 2>/dev/null | grep 'IEEE' | awk '{print $1}'))
-if [ ${#INTERFACES[@]} -eq 0 ]; then
-    echo "No wireless network interface found."
-    exit 1
-fi
 
-for iface in "${INTERFACES[@]}"; do
-    cat <<EOF > "$NORM_PROFILE/20-$iface.network"
+# Modifica: Invece di uscire, stampa un avviso e continua.
+# Lo script potrà così configurare le interfacce Ethernet anche se non ci sono Wi-Fi.
+if [ ${#INTERFACES[@]} -eq 0 ]; then
+    echo "[WARN] No wireless network interface found. Skipping Wi-Fi configuration."
+else
+    for iface in "${INTERFACES[@]}"; do
+        cat <<EOF > "$NORM_PROFILE/20-$iface.network"
 [Match]
 Name=$iface
 
@@ -62,10 +63,10 @@ WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
 MPTCPSubflow=no
 EOF
 
-    if [[ "$iface" == "${INTERFACES[0]}" ]]; then
-        ufw allow in on "$iface" from any port 68 to any port 67 proto udp
-        ufw allow in on "$iface" from any to any port 53
-        cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
+        if [[ "$iface" == "${INTERFACES[0]}" ]]; then
+            ufw allow in on "$iface" from any port 68 to any port 67 proto udp
+            ufw allow in on "$iface" from any to any port 53
+            cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
 [Match]
 Name=$iface
 WLANMode=ap
@@ -82,7 +83,7 @@ MPTCPSubflow=no
 DNS=8.8.8.8 1.1.1.1
 EOF
 
-        cat <<EOF > /etc/hostapd/hostapd.conf
+            cat <<EOF > /etc/hostapd/hostapd.conf
 interface=$iface
 driver=nl80211
 hw_mode=g
@@ -99,35 +100,36 @@ wpa_pairwise=CCMP
 rsn_pairwise=CCMP
 EOF
 
-        WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
+            WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
 
-        if [ ! -f "$WPA_CONF" ]; then
-            echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
-            echo "update_config=1" >> "$WPA_CONF"
-        fi
+            if [ ! -f "$WPA_CONF" ]; then
+                echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
+                echo "update_config=1" >> "$WPA_CONF"
+            fi
 
-        for knownwlans in /etc/NetworkManager/system-connections/*; do
-            if grep -q 'type=wifi' "$knownwlans"; then
-                SSID=$(grep -oP 'ssid=\K.*' "$knownwlans")
-                PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
+            if [ -d /etc/NetworkManager/system-connections/ ]; then
+                for knownwlans in /etc/NetworkManager/system-connections/*; do
+                    if grep -q 'type=wifi' "$knownwlans"; then
+                        SSID=$(grep -oP 'ssid=\K.*' "$knownwlans")
+                        PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
 
-                # Aggiunge la rete SOLO SE SSID e PSK esistono E l'SSID non è già nel file.
-                if [ -n "$SSID" ] && [ -n "$PSK" ] && ! grep -q -F "ssid=\"$SSID\"" "$WPA_CONF"; then
-                    echo "[INFO] Aggiunta nuova rete '$SSID' a $WPA_CONF"
-                    cat <<EONET >> "$WPA_CONF"
+                        if [ -n "$SSID" ] && [ -n "$PSK" ] && ! grep -q -F "ssid=\"$SSID\"" "$WPA_CONF"; then
+                            echo "[INFO] Aggiunta nuova rete '$SSID' a $WPA_CONF"
+                            cat <<EONET >> "$WPA_CONF"
 
 network={
     ssid="$SSID"
     psk="$PSK"
 }
 EONET
-                fi
+                        fi
+                    fi
+                done
             fi
-        done
-        
-        systemctl enable "wpa_supplicant@$iface.service"
-    else
-        cat <<EOF > "$AP_PROFILE/20-$iface.network"
+            
+            systemctl enable "wpa_supplicant@$iface.service"
+        else
+            cat <<EOF > "$AP_PROFILE/20-$iface.network"
 [Match]
 Name=$iface
 
@@ -138,8 +140,10 @@ WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
 [Address]
 MPTCPSubflow=no
 EOF
-    fi
-done
+        fi
+    done
+fi
+
 
 cat <<'EOF' > /etc/systemd/system/hostapd.service
 [Unit]
@@ -208,6 +212,7 @@ sed -i \
 -e 's/^#* *addr-flags=.*/addr-flags=subflow,signal,fullmesh/' \
 /etc/mptcpd/mptcpd.conf
 
+# Confermato che per il tuo sistema (Armbian) questo è il nome corretto del servizio
 systemctl enable mptcp
 
 ufw reload
