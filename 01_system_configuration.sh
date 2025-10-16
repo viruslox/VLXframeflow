@@ -15,36 +15,21 @@ GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
 
 systemctl enable --now ssh
 systemctl unmask hostapd 
-getty_file=($(find /etc/systemd/system/ -name 'getty*service'))
-getty_conf_line="ExecStart=-/sbin/agetty --noreset --noclear --issue-file=/etc/issue:/etc/issue.d:/run/issue.d:/usr/lib/issue.d - \${TERM}"
-sed -i "s#^ExecStart=-/sbin/agetty.*#${getty_conf_line}#" "${getty_file[@]}"
-getty_block="ImportCredential=tty.virtual.%I.agetty.*:agetty.
+
+mkdir -p /etc/systemd/system/getty@.service.d/
+getty_file="/etc/systemd/system/getty@.service.d/override.conf"
+GETTY_OVERRIDE_CONF="[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --noreset --noclear --issue-file=/etc/issue:/etc/issue.d:/run/issue.d:/usr/lib/issue.d - %I \${TERM}
+ImportCredential=tty.virtual.%I.agetty.*:agetty.
 ImportCredential=tty.virtual.%I.login.*:login.
 ImportCredential=agetty.*
 ImportCredential=login.*
 ImportCredential=shell.*"
-for file in "${getty_file[@]}"; do
-    awk -v block="$getty_block" '
-    {
-        if (found_sighup) {
-            if ($0 ~ /^$/) {
-                print block
-            }
-            found_sighup = 0
-        }
-        if ($0 ~ /SendSIGHUP=yes/) {
-            found_sighup = 1
-        }
-        print $0
-    }
-    ' "$file" > "$file.tmp"
-    if [ $? -eq 0 ]; then
-        mv "$file.tmp" "$file"
-    else
-        echo "[ERR] Error editing $file."
-        rm "$file.tmp"
-    fi
-done
+
+echo "$GETTY_OVERRIDE_CONF" > "$getty_file"
+echo "[INFO]: Applying systemd override for getty.service..."
+systemctl daemon-reload
 
 echo "We're about to reconfigure the whole OS including uninstall Desktop apps and graphical GUI - You can skip this step"
 read -r -p "Do you want to perform a full system update and reconfigure APT sources? (Y/n) " response
@@ -54,8 +39,22 @@ if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
     apt -y upgrade
     apt -y dist-upgrade
     apt -y autoremove
-    wget https://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/deb-multimedia-keyring_2024.9.1_all.deb
-    dpkg -i `pwd`/deb-multimedia-keyring_2024.9.1_all.deb
+	
+	# Finding the latest deb-multimedia-keyring version..."
+	KEYRING_PAGE_URL="https://www.deb-multimedia.org/pool/main/d/deb-multimedia-keyring/"
+	LATEST_KEYRING_FILE=$(curl -s "$KEYRING_PAGE_URL" | grep -o 'deb-multimedia-keyring_[0-9.]*_all\.deb' | sort -V | tail -n 1)
+	if [ -z "$LATEST_KEYRING_FILE" ]; then
+	    echo "[ERR]: Could not find the latest deb-multimedia-keyring file."
+	else
+		LATEST_KEYRING_URL="${KEYRING_PAGE_URL}${LATEST_KEYRING_FILE}"
+		wget -q "$LATEST_KEYRING_URL" -O "/tmp/$LATEST_KEYRING_FILE"
+		if [ $? -ne 0 ]; then
+	    	echo "[ERR]: Failed to download the keyring package."
+		else
+		dpkg -i "/tmp/$LATEST_KEYRING_FILE"
+		rm "/tmp/$LATEST_KEYRING_FILE" # Pulisce il file scaricato
+		fi
+	fi
 
     apt -y update
     apt -y install aptitude apt dpkg
