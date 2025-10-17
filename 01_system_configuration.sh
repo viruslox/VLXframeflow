@@ -205,6 +205,10 @@ if ! crontab -l 2>/dev/null | grep -qF "$CRON_script"; then
     fi
 fi
 
+## Allow dmesg for nornal users
+echo kernel.dmesg_restrict = 0 | tee -a /etc/sysctl.d/10-local.conf >/dev/null
+sysctl kernel.dmesg_restrict=0
+
 echo "[OK]: System configuration complete."
 echo "Starting by now You are supposed to use $answnewuser" 
 
