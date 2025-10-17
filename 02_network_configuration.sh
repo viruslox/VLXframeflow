@@ -59,6 +59,9 @@ WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
 
 [Address]
 MPTCPSubflow=no
+
+[Link]
+WiFiPowerSave=disable
 EOF
 
         if [[ "$iface" == "${INTERFACES[0]}" ]]; then
@@ -79,6 +82,9 @@ MPTCPSubflow=no
 
 [DHCPServer]
 DNS=8.8.8.8 1.1.1.1
+
+[Link]
+WiFiPowerSave=disable
 EOF
 
             cat <<EOF > /etc/hostapd/hostapd.conf
@@ -137,6 +143,9 @@ WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
 
 [Address]
 MPTCPSubflow=no
+
+[Link]
+WiFiPowerSave=disable
 EOF
         fi
     done
@@ -177,6 +186,9 @@ DHCP=yes
 
 [Address]
 MPTCPSubflow=no
+
+[Link]
+EnergyEfficientEthernet=false
 EOF
 
 cat <<EOF > "$AP_PROFILE/30-$iface-mptcp.network"
@@ -192,6 +204,9 @@ MPTCPSubflow=yes
 [Route]
 Gateway=_dhcp4
 Metric=100
+
+[Link]
+EnergyEfficientEthernet=false
 EOF
     fi
 done
