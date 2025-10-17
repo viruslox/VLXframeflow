@@ -101,8 +101,8 @@ EOF
             WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
 
             if [ ! -f "$WPA_CONF" ]; then
-                echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
-                echo "update_config=1" >> "$WPA_CONF"
+                echo "## ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
+                echo "## update_config=1" >> "$WPA_CONF"
             fi
 
             if [ -d /etc/NetworkManager/system-connections/ ]; then
@@ -212,6 +212,9 @@ sed -i \
 
 # Confermato che per il tuo sistema (Armbian) questo è il nome corretto del servizio
 systemctl enable mptcp
+
+systemctl disable systemd-networkd-wait-online.service
+systemctl mask systemd-networkd-wait-online.service
 
 ufw reload
 ufw --force enable
