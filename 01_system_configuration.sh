@@ -38,6 +38,7 @@ if [[ -z "$response" || "$response" =~ ^[yY]$ ]]; then
 	# Removing desktop / GUI packages
 	tasksel remove desktop gnome-desktop xfce-desktop kde-desktop cinnamon-desktop mate-desktop lxde-desktop lxqt-desktop
     apt -y purge qt* *gtk* adwaita*
+	apt -y purge cloud-guest-utils cloud-init
     apt -y autoremove
 
 	# Upgrading the OS base
