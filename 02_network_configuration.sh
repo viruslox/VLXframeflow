@@ -12,34 +12,73 @@ if ! sysctl net.mptcp.enabled &> /dev/null; then
 elif [ "$(sysctl -n net.mptcp.enabled)" -eq 0 ]; then
     echo "[WARN] MPTCP is not enabled. Enabling it now."
     sysctl -w net.mptcp.enabled=1
+	if [ ! -e /etc/sysctl.d/98-mptcp.conf ]; then
+		echo "net.mptcp.enabled=1" > /etc/sysctl.d/98-mptcp.conf
+	fi
     echo "[OK] MPTCP enabled."
 else
     echo "[OK] MPTCP is already enabled."
+fi
+
+if [ ! -e /etc/sysctl.d/97-forwarding.conf ]; then
+	echo "[INFO] Enabling IPv4 and IPv6 forwarding..."
+cat <<EOF > /etc/sysctl.d/97-forwarding.conf
+net.ipv4.ip_forward=1
+net.ipv6.conf.all.forwarding=1
+EOF
+	sysctl -p /etc/sysctl.d/97-forwarding.conf
 fi
 
 NORM_PROFILE="/etc/systemd/network/profiles/normal"
 AP_PROFILE="/etc/systemd/network/profiles/ap-bonding"
 mkdir -p "$NORM_PROFILE" "$AP_PROFILE"
 
+# Configuring Firewall (UFW)
 ufw allow 22/tcp
 sed -i '/^DEFAULT_FORWARD_POLICY/c\DEFAULT_FORWARD_POLICY="ACCEPT"' /etc/default/ufw
+if ! grep -q 'IPV6=yes' /etc/default/ufw; then
+    echo 'IPV6=yes' >> /etc/default/ufw
+fi
 
 if [ ! -f /etc/ufw/before.rules.BK ]; then
     cp -p /etc/ufw/before.rules /etc/ufw/before.rules.BK
 fi
 
 if ! grep -qF "VLXframelow NAT table rules" /etc/ufw/before.rules; then
-    echo "[INFO]: Updating UFW settings with NAT rules"
-    NAT_RULES=$(cat <<EOF
+    echo "[INFO]: Updating UFW settings with NAT rules for IPv4"
+    NAT_RULES=$(cat <<EOF
 # VLXframelow NAT table rules
 *nat
 :POSTROUTING ACCEPT [0:0]
--A POSTROUTING -s 192.168.168.0/24 -j MASQUERADE
+-A POSTROUTING -s 192.168.168.0/24 -o+ -j MASQUERADE
 COMMIT
 # End of VLXframeflow NAT rules
 EOF
 )
-    echo -e "$NAT_RULES\n$(cat /etc/ufw/before.rules)" > /etc/ufw/before.rules
+    sed -i '1s;^;'"$NAT_RULES"'\n;' /etc/ufw/before.rules
+fi
+
+# IPv6 Forwarding
+if [ ! -f /etc/ufw/before6.rules ]; then
+    touch /etc/ufw/before6.rules
+fi
+if ! grep -qF "VLXframelow IPv6 forwarding rules" /etc/ufw/before6.rules; then
+    echo "[INFO]: Updating UFW settings with forwarding rules for IPv6"
+    NAT6_RULES=$(cat <<'EOF'
+# VLXframelow IPv6 forwarding rules
+*filter
+:ufw6-forward - [0:0]
+:ufw6-before-forward - [0:0]
+-A ufw6-before-forward -p icmpv6 --icmpv6-type neighbor-solicitation -j ACCEPT
+-A ufw6-before-forward -p icmpv6 --icmpv6-type neighbor-advertisement -j ACCEPT
+-A ufw6-before-forward -p icmpv6 --icmpv6-type router-solicitation -j ACCEPT
+-A ufw6-before-forward -p icmpv6 --icmpv6-type router-advertisement -j ACCEPT
+-A ufw6-forward -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+COMMIT
+# End of VLXframeflow IPv6 rules
+EOF
+)
+    sed -i '1s;^;'"$NAT6_RULES"'\n;' /etc/ufw/before6.rules
 fi
 
 ## for each interface create profiles
@@ -55,6 +94,7 @@ Name=$iface
 
 [Network]
 DHCP=yes
+IPv6AcceptRA=yes
 WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
 
 [Address]
@@ -64,24 +104,34 @@ MPTCPSubflow=no
 WiFiPowerSave=disable
 EOF
 
-        if [[ "$iface" == "${INTERFACES[0]}" ]]; then
-            ufw allow in on "$iface" from any port 68 to any port 67 proto udp
-            ufw allow in on "$iface" from any to any port 53
-            cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
+        if [[ "$iface" == "${INTERFACES[0]}" ]]; then
+            ufw allow 546/udp # DHCPv6 Client
+            ufw allow 547/udp # DHCPv6 Server
+            ufw allow in on "$iface" from any port 68 to any port 67 proto udp # DHCPv4
+            ufw allow in on "$iface" to any port 53 # DNS
+
+            # Profilo AP (con supporto IPv6)
+            cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
 [Match]
 Name=$iface
 WLANMode=ap
 
 [Network]
 Address=192.168.168.1/24
-IPMasquerade=yes
+Address=fd42:42:42::1/64
 DHCPServer=yes
+IPv6SendRA=yes
+IPMasquerade=yes
 
 [Address]
 MPTCPSubflow=no
 
 [DHCPServer]
 DNS=8.8.8.8 1.1.1.1
+DNS=2001:4860:4860::8888 2606:4700:4700::1111
+
+[IPv6SendRA]
+DNS=2001:4860:4860::8888 2606:4700:4700::1111
 
 [Link]
 WiFiPowerSave=disable
@@ -107,6 +157,7 @@ EOF
             WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
 
             if [ ! -f "$WPA_CONF" ]; then
+		## These 2 lines are commented because it's need futher testing
                 echo "## ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
                 echo "## update_config=1" >> "$WPA_CONF"
             fi
@@ -139,10 +190,14 @@ Name=$iface
 
 [Network]
 DHCP=yes
+IPv6AcceptRA=yes
 WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
 
 [Address]
 MPTCPSubflow=no
+
+[Route]
+Metric=200
 
 [Link]
 WiFiPowerSave=disable
@@ -151,11 +206,10 @@ EOF
     done
 fi
 
-
+# Hostapd service configuration
 cat <<'EOF' > /etc/systemd/system/hostapd.service
 [Unit]
 Description=Access point and authentication server for Wi-Fi and Ethernet
-Documentation=man:hostapd(8)
 After=network.target
 ConditionFileNotEmpty=/etc/hostapd/hostapd.conf
 
@@ -173,16 +227,17 @@ EOF
 
 ## for each interface create profiles
 for iface in $(ls /sys/class/net); do
-    if [ "$iface" == "lo" ]; then
-        continue
-    elif [[ "$iface" != *bond* && ! -d "/sys/class/net/$iface/wireless" ]]; then
-## Ethernet and USB net interfaces
-cat <<EOF > "$NORM_PROFILE/10-$iface.network"
+    if [ "$iface" == "lo" ] || [[ "$iface" == *bond* ]] || [ -d "/sys/class/net/$iface/wireless" ]; then
+        continue
+    fi
+    # Profilo normale
+    cat <<EOF > "$NORM_PROFILE/10-$iface.network"
 [Match]
 Name=$iface
 
 [Network]
 DHCP=yes
+IPv6AcceptRA=yes
 
 [Address]
 MPTCPSubflow=no
@@ -191,18 +246,19 @@ MPTCPSubflow=no
 EnergyEfficientEthernet=false
 EOF
 
-cat <<EOF > "$AP_PROFILE/30-$iface-mptcp.network"
+    # AP/Bonding profile (uplink MPTCP)
+    cat <<EOF > "$AP_PROFILE/30-$iface-mptcp.network"
 [Match]
 Name=$iface
 
 [Network]
 DHCP=yes
+IPv6AcceptRA=yes
 
 [Address]
 MPTCPSubflow=yes
 
 [Route]
-Gateway=_dhcp4
 Metric=100
 
 [Link]
@@ -219,13 +275,13 @@ systemctl disable NetworkManager
 systemctl enable systemd-networkd
 systemctl enable systemd-resolved
 
+## Setting and enabling mptcp service
 sed -i \
 -e 's/^#* *path-manager=.*/path-manager=default/' \
 -e 's/^#* *load-plugins=.*/load-plugins=addr_adv/' \
 -e 's/^#* *addr-flags=.*/addr-flags=subflow,signal,fullmesh/' \
 /etc/mptcpd/mptcpd.conf
 
-# Confermato che per il tuo sistema (Armbian) questo è il nome corretto del servizio
 systemctl enable mptcp
 
 systemctl disable systemd-networkd-wait-online.service
