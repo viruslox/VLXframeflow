@@ -143,7 +143,7 @@ fi
 apt-get -y install firmware-linux firmware-linux-free firmware-linux-nonfree firmware-misc-nonfree
 apt-get -y install hostapd systemd-resolved wireless-tools ufw postfix firmware-atheros firmware-brcm80211 firmware-iwlwifi
 apt-get -y install ffmpeg libavdevice-dev libcamera-dev libcamera-tools libcamera-v4l2 dov4l dv4l qv4l2 v4l-conf v4l-utils
-apt-get -y install uvccapture libuvc-dev gpsd gpsd-clients jq git
+apt-get -y install uvccapture libuvc-dev gpsd gpsd-clients jq git screen
 
 ## Reorder passwd file and get unprileged users list
 pwck -s
