@@ -2,11 +2,12 @@
 
 dedicated_user=$(ls -ld /opt/VLXframeflow | awk '{print $3}')
 if [ "$(id -u)" -eq 0 ]; then
-  echo "[ERR] Please launch this script with the dedicated user."
+  echo "[ERR] Please launch this script with the dedicated user: $dedicated_user"
   echo "Never, never use root when not necessaire."
   exit 1
 elif [ "$USER" != "$dedicated_user" ]; then
-	echo "Only $dedicated_user can correctly execute this script."
+	echo "[ERR] Only $dedicated_user can correctly execute this script."
+	exit 1
 fi
 
 if [ -f ~/.frameflow_profile ]; then
@@ -16,17 +17,12 @@ else
     exit 1
 fi
 
-if [ -z "$VLXsuite_DIR" ]; then
-	VLXsuite_DIR="/opt/VLXframeflow"
-fi
-if [ -z "$VLXlogs_DIR" ]; then
-	$VLXlogs_DIR="/opt/VLXflowlogs"
-fi
+VLXsuite_DIR="${VLXsuite_DIR:-/opt/VLXframeflow}"
+VLXlogs_DIR="${VLXlogs_DIR:-/opt/VLXflowlogs}"
 
 # if zero means not enabled; 1 means enable only the first device found, 2 only the first 2 devices found...
-if [ -z "$ENABLED_DEVICES" ]; then
-    ENABLED_DEVICES=1
-elif [[ "$ENABLED_DEVICES" -eq 0 ]]; then
+ENABLED_DEVICES="${ENABLED_DEVICES:-1}"
+if [[ "$ENABLED_DEVICES" -eq 0 ]]; then
     echo "[ERR] The tools is configured as not enabled"
     exit 1
 fi
@@ -39,11 +35,11 @@ if [ -z "$AUDIODEV" ]; then
     echo "[ERR] AUDIODEV is not set in ~/.frameflow_profile"
     exit 1
 else
-    AUDIODEV=$(arecord -l | grep "${AUDIODEV}" | cut -d ' ' -f 3)
+    AUDIODEV_HW=$(arecord -l | grep -m1 "card .*\[${AUDIODEV}\]" | sed -n 's/card \([0-9]\+\): .*/\1/p')
 fi
 
 if ! [[ "$1" =~ ^[0-9]+$ ]]; then
-    echo "[ERR] Sorry, intergers only"
+    echo "[ERR] Sorry, integers only"
     exit 1
 elif [[ "$1" -eq 0 || "$1" -gt "$ENABLED_DEVICES" ]]; then
     echo "[ERR] You can't use a not enabled device."
@@ -54,7 +50,7 @@ fi
 PID_FILE="$VLXlogs_DIR/ffmpeg_stream_$1.pid"
 LOG_FILE="$VLXlogs_DIR/ffmpeg_stream_$1.log"
 
-FFMPEG_CMD=$(which ffmpeg)
+FFMPEG_PATH=$(which ffmpeg)
 
 start() {
     if [ -f "$PID_FILE" ]; then
@@ -62,31 +58,47 @@ start() {
         exit 1
     fi
 
-	CAMERA=$(($1 - 1))
-	#videodevlist=$(v4l2-ctl --list-devices | grep -A1 'usb-xhci' | grep '/dev/video' | head -n1 | xargs)
-	mapfile -t videodevlist < <(v4l2-ctl --list-devices | grep -A1 'usb-xhci' | grep '/dev/video')
- 	if [ -z "$videodevlist" ]; then
-		echo "No 'usb-xhci' device found. Trying the general 'usb' filter..."
-		videodevlist=$(v4l2-ctl --list-devices | grep -A1 'usb' | grep '/dev/video')
+	local CAMERA_INDEX=$(($1 - 1))
+	mapfile -t videodevlist < <(v4l2-ctl --list-devices | grep -A1 'usb' | grep --line-buffered '/dev/video' | sed 's/^[ \t]*//')
+    
+	if [ ${#videodevlist[@]} -eq 0 ]; then
+		echo "[ERR] No '/dev/video*' devices found."
+		exit 1
 	fi
 	echo "Found input video devices: ${videodevlist[@]}"
-    
-    if [[ "$CAMERA" -eq 0 ]] && [[ -n "${AUDIODEV}" ]]; then
-        AUDIOCAM="-f alsa -i hw:CARD=${AUDIODEV}"
-        AUDIOCOD="-c:a aac -b:a 128k"
-    else
-        unset AUDIOCAM AUDIOCOD
-    fi
-    
-	FFMPEG_CMD="mptcpize run $FFMPEG_CMD -f v4l2 -framerate 30 -video_size 1920x1080 -i ${videodevlist[$CAMERA]} ${AUDIOCAM} -c:v libx264 -pix_fmt yuv420p -preset superfast -b:v 600k ${AUDIOCOD} -f rtsp ${RTSP_URL}_$1"
 
-	if [ -z "${videodevlist[$CAMERA]}" ]; then
-		echo "[ERR] Video device ${videodevlist[$CAMERA]} not found!"
+    local VIDEO_DEVICE="${videodevlist[$CAMERA_INDEX]}"
+	if [ -z "$VIDEO_DEVICE" ]; then
+		echo "[ERR] Video device for camera $1 (index $CAMERA_INDEX) not found!"
 		exit 1
 	fi
 
+	local -a FFMPEG_CMD_ARRAY=(
+		"mptcpize" "run" "$FFMPEG_PATH"
+		"-f" "v4l2"
+		"-framerate" "30"
+		"-video_size" "1920x1080"
+		"-i" "$VIDEO_DEVICE"
+	)
+    
+    if [[ "$CAMERA_INDEX" -eq 0 ]] && [[ -n "${AUDIODEV_HW}" ]]; then
+        echo "Adding audio input from hw:CARD=${AUDIODEV_HW}"
+        FFMPEG_CMD_ARRAY+=("-f" "alsa" "-i" "hw:CARD=${AUDIODEV_HW}")
+        FFMPEG_CMD_ARRAY+=("-c:a" "aac" "-b:a" "128k")
+    fi
+    
+	FFMPEG_CMD_ARRAY+=(
+		"-c:v" "libx264"
+		"-pix_fmt" "yuv420p"
+		"-preset" "superfast"
+		"-b:v" "600k"
+		"-f" "rtsp" "${RTSP_URL}_$1"
+	)
+
 	echo "Launching FFmpeg in background..."
-    $FFMPEG_CMD >/dev/null 2>"$LOG_FILE" &
+	echo "Executing command: ${FFMPEG_CMD_ARRAY[@]}" 
+
+    "${FFMPEG_CMD_ARRAY[@]}" >/dev/null 2>"$LOG_FILE" &
     echo $! > "$PID_FILE"
 
     sleep 1
@@ -95,37 +107,39 @@ start() {
 
 stop() {
     if [ ! -f "$PID_FILE" ]; then
-        echo "[ERR] PID file not found"
-	return
+        echo "[INFO] PID file not found. Nothing to stop."
+	    return
     fi
-
-    echo "Killing FFmpeg..."
-    kill $(cat "$PID_FILE")
+    local PID=$(cat "$PID_FILE")
+    echo "Killing FFmpeg process with PID $PID..."
+    # Kill the process, ignore error if it's already gone
+    kill "$PID" 2>/dev/null || true
     rm "$PID_FILE"
     echo "Done."
 }
 
 status() {
     if [ ! -f "$PID_FILE" ]; then
-        echo "[INFO] PID file not found"
+        echo "Status: Not running (PID file not found)."
         return
     fi
 
-    PID=$(cat "$PID_FILE")
-    if ps -p $PID > /dev/null; then
-        echo "Already running with PID: $PID"
+    local PID=$(cat "$PID_FILE")
+    if ps -p "$PID" > /dev/null; then
+        echo "Status: Already running with PID: $PID"
         echo "Check logs: tail -f $LOG_FILE"
     else
-        echo "[ERR] PID file found but process does not exist, removing PID file" 
-	rm $PID_FILE
+        echo "[WARN] PID file found but process does not exist, removing stale PID file."
+	    rm "$PID_FILE"
     fi
 }
 
 case "$2" in
     start)
-	status
-        start $1
-	status
+	    #status # Calling status here is redundant, start() already checks the PID file
+        start
+	    sleep 1
+	    status
         ;;
     stop)
         stop
