@@ -97,6 +97,7 @@ start() {
 		"-pix_fmt" "yuv420p"
 		"-preset" "superfast"
 		"-b:v" "600k"
+		"-rw_timeout" "10000000"
 		"-f" "rtsp" "${RTSP_URL}_${CAMERA_ID}"
 	)
 
