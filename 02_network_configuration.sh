@@ -241,9 +241,6 @@ Name=$iface
 DHCP=yes
 IPv6AcceptRA=yes
 
-[Address]
-MPTCPSubflow=no
-
 [Link]
 EnergyEfficientEthernet=false
 EOF
