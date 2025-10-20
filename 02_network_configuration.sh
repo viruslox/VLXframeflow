@@ -45,8 +45,8 @@ if [ ! -f /etc/ufw/before.rules.BK ]; then
 fi
 
 if ! grep -qF "VLXframelow NAT table rules" /etc/ufw/before.rules; then
-    echo "[INFO]: Updating UFW settings with NAT rules for IPv4"
-    NAT_RULES=$(cat <<EOF
+    echo "[INFO]: Updating UFW settings with NAT rules for IPv4"
+    NAT_RULES=$(cat <<EOF
 # VLXframelow NAT table rules
 *nat
 :POSTROUTING ACCEPT [0:0]
@@ -55,7 +55,7 @@ COMMIT
 # End of VLXframeflow NAT rules
 EOF
 )
-    sed -i '1s;^;'"$NAT_RULES"'\n;' /etc/ufw/before.rules
+    sed -i '1s;^;'"$NAT_RULES"'\n;' /etc/ufw/before.rules
 fi
 
 # IPv6 Forwarding
@@ -104,14 +104,14 @@ MPTCPSubflow=no
 WiFiPowerSave=disable
 EOF
 
-        if [[ "$iface" == "${INTERFACES[0]}" ]]; then
+        if [[ "$iface" == "${INTERFACES[0]}" ]]; then
             ufw allow 546/udp # DHCPv6 Client
             ufw allow 547/udp # DHCPv6 Server
-            ufw allow in on "$iface" from any port 68 to any port 67 proto udp # DHCPv4
-            ufw allow in on "$iface" to any port 53 # DNS
+            ufw allow in on "$iface" from any port 68 to any port 67 proto udp # DHCPv4
+            ufw allow in on "$iface" to any port 53 # DNS
 
-            # Profilo AP (con supporto IPv6)
-            cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
+            # Profilo AP (con supporto IPv6)
+            cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
 [Match]
 Name=$iface
 WLANMode=ap
@@ -227,11 +227,11 @@ EOF
 
 ## for each interface create profiles
 for iface in $(ls /sys/class/net); do
-    if [ "$iface" == "lo" ] || [[ "$iface" == *bond* ]] || [ -d "/sys/class/net/$iface/wireless" ]; then
-        continue
-    fi
-    # Profilo normale
-    cat <<EOF > "$NORM_PROFILE/10-$iface.network"
+    if [ "$iface" == "lo" ] || [[ "$iface" == *bond* ]] || [ -d "/sys/class/net/$iface/wireless" ]; then
+        continue
+    fi
+    # Profilo normale
+    cat <<EOF > "$NORM_PROFILE/10-$iface.network"
 [Match]
 Name=$iface
 
