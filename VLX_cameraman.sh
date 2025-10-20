@@ -51,14 +51,19 @@ PID_FILE="$VLXlogs_DIR/ffmpeg_stream_$1.pid"
 LOG_FILE="$VLXlogs_DIR/ffmpeg_stream_$1.log"
 
 FFMPEG_PATH=$(which ffmpeg)
+MPTCPIZE_PATH=$(which mptcpize)
+
+if [ -z "$FFMPEG_PATH" ]; then echo "[ERR] ffmpeg executable not found in PATH"; exit 1; fi
+if [ -z "$MPTCPIZE_PATH" ]; then echo "[ERR] mptcpize executable not found in PATH"; exit 1; fi
 
 start() {
+	local CAMERA_ID="$1"
     if [ -f "$PID_FILE" ]; then
-        echo "Process for camera $1 seems to be already running. Check with 'status'."
+        echo "Process for camera $CAMERA_ID seems to be already running. Check with 'status'."
         exit 1
     fi
 
-	local CAMERA_INDEX=$(($1 - 1))
+	local CAMERA_INDEX=$((CAMERA_ID - 1))
 	mapfile -t videodevlist < <(v4l2-ctl --list-devices | grep -A1 'usb' | grep --line-buffered '/dev/video' | sed 's/^[ \t]*//')
     
 	if [ ${#videodevlist[@]} -eq 0 ]; then
@@ -69,12 +74,12 @@ start() {
 
     local VIDEO_DEVICE="${videodevlist[$CAMERA_INDEX]}"
 	if [ -z "$VIDEO_DEVICE" ]; then
-		echo "[ERR] Video device for camera $1 (index $CAMERA_INDEX) not found!"
+		echo "[ERR] Video device for camera $CAMERA_ID (index $CAMERA_INDEX) not found!"
 		exit 1
 	fi
 
 	local -a FFMPEG_CMD_ARRAY=(
-		"mptcpize" "run" "$FFMPEG_PATH"
+		"$MPTCPIZE_PATH" "run" "$FFMPEG_PATH"
 		"-f" "v4l2"
 		"-framerate" "30"
 		"-video_size" "1920x1080"
@@ -92,7 +97,7 @@ start() {
 		"-pix_fmt" "yuv420p"
 		"-preset" "superfast"
 		"-b:v" "600k"
-		"-f" "rtsp" "${RTSP_URL}_$1"
+		"-f" "rtsp" "${RTSP_URL}_${CAMERA_ID}"
 	)
 
 	echo "Launching FFmpeg in background..."
@@ -137,7 +142,7 @@ status() {
 case "$2" in
     start)
 	    #status # Calling status here is redundant, start() already checks the PID file
-        start
+        start "$1"
 	    sleep 1
 	    status
         ;;
