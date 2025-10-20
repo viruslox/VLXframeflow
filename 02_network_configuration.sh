@@ -12,21 +12,21 @@ if ! sysctl net.mptcp.enabled &> /dev/null; then
 elif [ "$(sysctl -n net.mptcp.enabled)" -eq 0 ]; then
     echo "[WARN] MPTCP is not enabled. Enabling it now."
     sysctl -w net.mptcp.enabled=1
-	if [ ! -e /etc/sysctl.d/98-mptcp.conf ]; then
-		echo "net.mptcp.enabled=1" > /etc/sysctl.d/98-mptcp.conf
-	fi
+    if [ ! -e /etc/sysctl.d/98-mptcp.conf ]; then
+        echo "net.mptcp.enabled=1" > /etc/sysctl.d/98-mptcp.conf
+    fi
     echo "[OK] MPTCP enabled."
 else
     echo "[OK] MPTCP is already enabled."
 fi
 
 if [ ! -e /etc/sysctl.d/97-forwarding.conf ]; then
-	echo "[INFO] Enabling IPv4 and IPv6 forwarding..."
+    echo "[INFO] Enabling IPv4 and IPv6 forwarding..."
 cat <<EOF > /etc/sysctl.d/97-forwarding.conf
 net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 EOF
-	sysctl -p /etc/sysctl.d/97-forwarding.conf
+    sysctl -p /etc/sysctl.d/97-forwarding.conf
 fi
 
 NORM_PROFILE="/etc/systemd/network/profiles/normal"
@@ -46,16 +46,17 @@ fi
 
 if ! grep -qF "VLXframelow NAT table rules" /etc/ufw/before.rules; then
     echo "[INFO]: Updating UFW settings with NAT rules for IPv4"
-    NAT_RULES=$(cat <<EOF
+    NAT_RULES=$(cat <<'EOF'
 # VLXframelow NAT table rules
 *nat
 :POSTROUTING ACCEPT [0:0]
--A POSTROUTING -s 192.168.168.0/24 -o+ -j MASQUERADE
+-A POSTROUTING -s 192.168.168.0/24 -j MASQUERADE
 COMMIT
 # End of VLXframeflow NAT rules
 EOF
 )
-    sed -i '1s;^;'"$NAT_RULES"'\n;' /etc/ufw/before.rules
+    # Prepend rules to the file
+    echo -e "$NAT_RULES\n$(cat /etc/ufw/before.rules)" > /etc/ufw/before.rules
 fi
 
 # IPv6 Forwarding
@@ -78,7 +79,7 @@ COMMIT
 # End of VLXframeflow IPv6 rules
 EOF
 )
-    sed -i '1s;^;'"$NAT6_RULES"'\n;' /etc/ufw/before6.rules
+    echo -e "$NAT6_RULES\n$(cat /etc/ufw/before6.rules)" > /etc/ufw/before6.rules
 fi
 
 ## for each interface create profiles
@@ -110,7 +111,7 @@ EOF
             ufw allow in on "$iface" from any port 68 to any port 67 proto udp # DHCPv4
             ufw allow in on "$iface" to any port 53 # DNS
 
-            # Profilo AP (con supporto IPv6)
+            # AP Profile (with IPv6 support)
             cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
 [Match]
 Name=$iface
@@ -157,9 +158,9 @@ EOF
             WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
 
             if [ ! -f "$WPA_CONF" ]; then
-		## These 2 lines are commented because it's need futher testing
-                echo "## ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
-                echo "## update_config=1" >> "$WPA_CONF"
+                # These lines are necessary for wpa_cli and other tools to work
+                echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
+                echo "update_config=1" >> "$WPA_CONF"
             fi
 
             if [ -d /etc/NetworkManager/system-connections/ ]; then
@@ -169,7 +170,7 @@ EOF
                         PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
 
                         if [ -n "$SSID" ] && [ -n "$PSK" ] && ! grep -q -F "ssid=\"$SSID\"" "$WPA_CONF"; then
-                            echo "[INFO] Aggiunta nuova rete '$SSID' a $WPA_CONF"
+                            echo "[INFO] Adding new network '$SSID' to $WPA_CONF"
                             cat <<EONET >> "$WPA_CONF"
 
 network={
@@ -230,7 +231,7 @@ for iface in $(ls /sys/class/net); do
     if [ "$iface" == "lo" ] || [[ "$iface" == *bond* ]] || [ -d "/sys/class/net/$iface/wireless" ]; then
         continue
     fi
-    # Profilo normale
+    # Normal profile
     cat <<EOF > "$NORM_PROFILE/10-$iface.network"
 [Match]
 Name=$iface
@@ -264,7 +265,6 @@ Metric=100
 [Link]
 EnergyEfficientEthernet=false
 EOF
-    fi
 done
 
 ## Enable the new settings
