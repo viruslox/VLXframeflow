@@ -226,7 +226,8 @@ ExecStart=/usr/sbin/hostapd -P /run/hostapd.pid $DAEMON_OPTS ${DAEMON_CONF}
 WantedBy=multi-user.target
 EOF
 
-## for each interface create profiles
+## for each ethernet/usb/tether interface create profiles
+jj=0
 for iface in $(ls /sys/class/net); do
     if [ "$iface" == "lo" ] || [[ "$iface" == *bond* ]] || [ -d "/sys/class/net/$iface/wireless" ]; then
         continue
@@ -256,15 +257,24 @@ Name=$iface
 DHCP=yes
 IPv6AcceptRA=yes
 
+[DHCPv4]
+UseRoutes=false
+
 [Address]
 MPTCPSubflow=yes
 
 [Route]
-Metric=100
+Gateway=_dhcp
+Table=$((100 + jj))
+
+[RoutingPolicyRule]
+From=_dhcp
+Table=$((100 + jj))
 
 [Link]
 EnergyEfficientEthernet=false
 EOF
+((jj++))
 done
 
 ## Enable the new settings
