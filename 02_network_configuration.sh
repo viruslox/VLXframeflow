@@ -253,26 +253,18 @@ EOF
 [Match]
 Name=$iface
 
-[Network]
-DHCP=yes
-IPv6AcceptRA=yes
-
-[DHCPv4]
-UseRoutes=false
-
-[Address]
-MPTCPSubflow=yes
-
-[Route]
-Gateway=_dhcp
-Table=$((100 + jj))
-
-[RoutingPolicyRule]
-From=_dhcp
-Table=$((100 + jj))
-
 [Link]
 EnergyEfficientEthernet=false
+RequiredForOnline=routable
+
+[Network]
+DHCP=yes
+
+[DHCPv4]
+RouteMetric=$((100 + jj))
+
+[IPv6AcceptRA]
+RouteMetric=$((100 + jj))
 EOF
 ((jj++))
 done
