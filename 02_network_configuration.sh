@@ -5,6 +5,10 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
+apt-get update
+systemctl disable NetworkManager
+apt-get -y install ufw mptcpd hostapd systemd-timesyncd networkd-dispatcher
+
 # Enable MPTCP
 if ! sysctl net.mptcp.enabled &> /dev/null; then
     echo "[ERR] The running kernel does not support Multipoint TCP."
@@ -12,8 +16,10 @@ if ! sysctl net.mptcp.enabled &> /dev/null; then
 elif [ "$(sysctl -n net.mptcp.enabled)" -eq 0 ]; then
     echo "[WARN] MPTCP is not enabled. Enabling it now."
     sysctl -w net.mptcp.enabled=1
+	sysctl -w net.mptcp.checksum_enabled=1
     if [ ! -e /etc/sysctl.d/98-mptcp.conf ]; then
         echo "net.mptcp.enabled=1" > /etc/sysctl.d/98-mptcp.conf
+		echo "net.mptcp.checksum_enabled=1" >> /etc/sysctl.d/98-mptcp.conf
     fi
     echo "[OK] MPTCP enabled."
 else
@@ -31,7 +37,8 @@ fi
 
 NORM_PROFILE="/etc/systemd/network/profiles/normal"
 AP_PROFILE="/etc/systemd/network/profiles/ap-bonding"
-mkdir -p "$NORM_PROFILE" "$AP_PROFILE"
+DISPATCHER_DIR="/etc/networkd-dispatcher/routable.d"
+mkdir -p "$NORM_PROFILE" "$AP_PROFILE" "$DISPATCHER_DIR"
 
 # Configuring Firewall (UFW)
 ufw allow 22/tcp
@@ -40,10 +47,15 @@ if ! grep -q 'IPV6=yes' /etc/default/ufw; then
     echo 'IPV6=yes' >> /etc/default/ufw
 fi
 
+# Backup UFW settings
 if [ ! -f /etc/ufw/before.rules.BK ]; then
     cp -p /etc/ufw/before.rules /etc/ufw/before.rules.BK
 fi
+if [ ! -f /etc/ufw/before6.rules ]; then
+    touch /etc/ufw/before6.rules
+fi
 
+# AP-mode IPv4 forwarding
 if ! grep -qF "VLXframelow NAT table rules" /etc/ufw/before.rules; then
     echo "[INFO]: Updating UFW settings with NAT rules for IPv4"
     NAT_RULES=$(cat <<'EOF'
@@ -59,10 +71,7 @@ EOF
     echo -e "$NAT_RULES\n$(cat /etc/ufw/before.rules)" > /etc/ufw/before.rules
 fi
 
-# IPv6 Forwarding
-if [ ! -f /etc/ufw/before6.rules ]; then
-    touch /etc/ufw/before6.rules
-fi
+# AP-mode IPv6 forwarding
 if ! grep -qF "VLXframelow IPv6 forwarding rules" /etc/ufw/before6.rules; then
     echo "[INFO]: Updating UFW settings with forwarding rules for IPv6"
     NAT6_RULES=$(cat <<'EOF'
@@ -82,21 +91,27 @@ EOF
     echo -e "$NAT6_RULES\n$(cat /etc/ufw/before6.rules)" > /etc/ufw/before6.rules
 fi
 
-## for each interface create profiles
+## create profiles for each wi-fi interface
 INTERFACES=($(iwconfig 2>/dev/null | grep 'IEEE' | awk '{print $1}'))
 
 if [ ${#INTERFACES[@]} -eq 0 ]; then
     echo "[WARN] No wireless network interface found. Skipping Wi-Fi configuration."
 else
     for iface in "${INTERFACES[@]}"; do
-        cat <<EOF > "$NORM_PROFILE/20-$iface.network"
+		# wi-fi as client
+		cat <<EOF | tee "$NORM_PROFILE/20-$iface-managed.network" "$AP_PROFILE/20-$iface-managed.network" > /dev/null
 [Match]
 Name=$iface
 
 [Network]
 DHCP=yes
-IPv6AcceptRA=yes
 WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
+
+[DHCPv4]
+RouteMetric=$((200 + jj))
+
+[IPv6AcceptRA]
+RouteMetric=$((200 + jj))
 
 [Address]
 MPTCPSubflow=no
@@ -105,13 +120,42 @@ MPTCPSubflow=no
 WiFiPowerSave=disable
 EOF
 
+		WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
+##            if [ ! -f "$WPA_CONF" ]; then
+##                # These lines requires more testing
+##                echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
+##                echo "update_config=1" >> "$WPA_CONF"
+##            fi
+		# Grab wifi networks and pass from network-manager, if anything still there
+		if [ -d /etc/NetworkManager/system-connections/ ]; then
+			for knownwlans in /etc/NetworkManager/system-connections/*; do
+			if grep -q 'type=wifi' "$knownwlans"; then
+				SSID=$(grep -oP 'ssid=\K.*' "$knownwlans")
+				PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
+
+				if [ -n "$SSID" ] && [ -n "$PSK" ] && ! grep -q -F "ssid=\"$SSID\"" "$WPA_CONF"; then
+					echo "[INFO] Adding new network '$SSID' to $WPA_CONF"
+					cat <<EONET >> "$WPA_CONF"
+network={
+    ssid="$SSID"
+    psk="$PSK"
+}
+EONET
+				fi
+			fi
+			done
+		fi
+		systemctl enable "wpa_supplicant@$iface.service"
+
+		# the first wifi interface can be enabled as access point
         if [[ "$iface" == "${INTERFACES[0]}" ]]; then
-            ufw allow 546/udp # DHCPv6 Client
-            ufw allow 547/udp # DHCPv6 Server
+            ufw allow in on "$iface" to any port 546 proto udp # DHCPv6 Client
+            ufw allow in on "$iface" to any port 547 proto udp # DHCPv6 Server
             ufw allow in on "$iface" from any port 68 to any port 67 proto udp # DHCPv4
             ufw allow in on "$iface" to any port 53 # DNS
 
             # AP Profile (with IPv6 support)
+			rm $AP_PROFILE/20-$iface-managed.network
             cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
 [Match]
 Name=$iface
@@ -138,7 +182,7 @@ DNS=2001:4860:4860::8888 2606:4700:4700::1111
 WiFiPowerSave=disable
 EOF
 
-            cat <<EOF > /etc/hostapd/hostapd.conf
+        cat <<EOF > /etc/hostapd/hostapd.conf
 interface=$iface
 driver=nl80211
 hw_mode=g
@@ -153,55 +197,6 @@ wpa_passphrase=LaTuaPasswordSuperSegreta
 wpa_key_mgmt=WPA-PSK
 wpa_pairwise=CCMP
 rsn_pairwise=CCMP
-EOF
-
-            WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
-
-            if [ ! -f "$WPA_CONF" ]; then
-                # These lines are necessary for wpa_cli and other tools to work
-                echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
-                echo "update_config=1" >> "$WPA_CONF"
-            fi
-
-            if [ -d /etc/NetworkManager/system-connections/ ]; then
-                for knownwlans in /etc/NetworkManager/system-connections/*; do
-                    if grep -q 'type=wifi' "$knownwlans"; then
-                        SSID=$(grep -oP 'ssid=\K.*' "$knownwlans")
-                        PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
-
-                        if [ -n "$SSID" ] && [ -n "$PSK" ] && ! grep -q -F "ssid=\"$SSID\"" "$WPA_CONF"; then
-                            echo "[INFO] Adding new network '$SSID' to $WPA_CONF"
-                            cat <<EONET >> "$WPA_CONF"
-
-network={
-    ssid="$SSID"
-    psk="$PSK"
-}
-EONET
-                        fi
-                    fi
-                done
-            fi
-            
-            systemctl enable "wpa_supplicant@$iface.service"
-        else
-            cat <<EOF > "$AP_PROFILE/20-$iface.network"
-[Match]
-Name=$iface
-
-[Network]
-DHCP=yes
-IPv6AcceptRA=yes
-WPAConfigFile=/etc/wpa_supplicant/wpa_supplicant-$iface.conf
-
-[Address]
-MPTCPSubflow=no
-
-[Route]
-Metric=200
-
-[Link]
-WiFiPowerSave=disable
 EOF
         fi
     done
@@ -232,21 +227,7 @@ for iface in $(ls /sys/class/net); do
     if [ "$iface" == "lo" ] || [[ "$iface" == *bond* ]] || [ -d "/sys/class/net/$iface/wireless" ]; then
         continue
     fi
-    # Normal profile
-    cat <<EOF > "$NORM_PROFILE/10-$iface.network"
-[Match]
-Name=$iface
-
-[Network]
-DHCP=yes
-IPv6AcceptRA=yes
-
-[Link]
-EnergyEfficientEthernet=false
-EOF
-
-    # AP/Bonding profile (uplink MPTCP)
-    cat <<EOF > "$AP_PROFILE/30-$iface-mptcp.network"
+    cat <<EOF | tee "$NORM_PROFILE/10-$iface.network" "$AP_PROFILE/10-$iface.network" > /dev/null
 [Match]
 Name=$iface
 
@@ -263,16 +244,26 @@ RouteMetric=$((100 + jj))
 [IPv6AcceptRA]
 RouteMetric=$((100 + jj))
 EOF
-((jj++))
+
+    cat <<EOF > "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
+#!/bin/sh
+if [ "\$IFACE" = "$iface" ]; then
+    IP_ADDR=\$(ip -4 addr show dev "\$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
+    if [ -n "\$IP_ADDR" ]; then
+        /sbin/ip mptcp endpoint add "\$IP_ADDR" dev "\$IFACE" subflow
+    fi
+fi
+EOF
+
+    chmod +x "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
+    ((jj++))
 done
 
 ## Enable the new settings
-apt-get update
-apt-get -y install mptcpd hostapd
 systemctl daemon-reload
-systemctl disable NetworkManager
 systemctl enable systemd-networkd
 systemctl enable systemd-resolved
+systemctl enable networkd-dispatcher
 
 ## Setting and enabling mptcp service
 sed -i \
@@ -283,7 +274,7 @@ sed -i \
 
 systemctl enable mptcp
 
-systemctl disable systemd-networkd-wait-online.service
+systemctl disable systemd-networkd-wait-online.service 2>/dev/null
 systemctl mask systemd-networkd-wait-online.service
 
 ufw reload
