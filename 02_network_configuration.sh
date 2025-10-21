@@ -255,7 +255,7 @@ if [ "\$IFACE" = "$iface" ]; then
 fi
 EOF
 
-    chmod +x "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
+    chmod 755 "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
     ((jj++))
 done
 
