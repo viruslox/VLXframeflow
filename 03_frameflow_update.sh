@@ -23,14 +23,14 @@ touch "$PROFILE_FILE"
 # Check for VLXsuite_DIR
 if ! grep -q "VLXsuite_DIR=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'VLXsuite_DIR' to profile."
-    echo -e "\n# IF You wish to change PATH, be sure that You have write rights there." >> "$PROFILE_FILE"
+    echo -e "# IF You wish to change PATH, be sure that You have write rights there." >> "$PROFILE_FILE"
     echo "VLXsuite_DIR=\"${VLXsuite_DIR}\"" >> "$PROFILE_FILE"
 fi
 
 # Check for VLXlogs_DIR
 if ! grep -q "VLXlogs_DIR=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'VLXlogs_DIR' to profile."
-    echo -e "\nVLXlogs_DIR=\"${VLXlogs_DIR}\"" >> "$PROFILE_FILE"
+    echo -e "VLXlogs_DIR=\"${VLXlogs_DIR}\"" >> "$PROFILE_FILE"
 fi
 
 if ! grep -q "ENABLED_DEVICES=" "$PROFILE_FILE"; then
@@ -41,7 +41,12 @@ fi
 
 if ! grep -q "RTSP_URL=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'RTSP_URL' to profile."
-    echo -e "\nRTSP_URL=\"rtsps://<host>:<port>/<path>/<key>\"" >> "$PROFILE_FILE"
+    echo -e "RTSP_URL=\"#rtsps://<host>:<port>/<path>/<key>\"" >> "$PROFILE_FILE"
+fi
+
+if ! grep -q "RTSP_URL=" "$PROFILE_FILE"; then
+    echo "[INFO] Adding 'SRT_URL' to profile."
+    echo -e "SRT_URL=\"#srt://<host>:<port>?streamid=publish:<path>/<key>\"" >> "$PROFILE_FILE"
 fi
 
 # Check for AUDIODEV
@@ -59,7 +64,7 @@ fi
 
 if ! grep -q "AUTH_TOKEN=" "$PROFILE_FILE"; then
     echo "[INFO] Adding placeholder for "GPS overlay" 'AUTH_TOKEN' to profile."
-    echo -e "\n#AUTH_TOKEN=\"<your api token>\"" >> "$PROFILE_FILE"
+    echo -e "#AUTH_TOKEN=\"<your api token>\"" >> "$PROFILE_FILE"
 fi
 
 mkdir -p ~/.config/systemd/user/
