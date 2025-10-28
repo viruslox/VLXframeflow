@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROFILE_FILE=$(find /home -name '.frameflow_profile' 2>/dev/null)
+PROFILE_FILE=$(find $HOME -name '.frameflow_profile' 2>/dev/null)
 if [ -f "$PROFILE_FILE" ]; then
   source "$PROFILE_FILE"
 fi
