@@ -83,7 +83,7 @@ git pull --no-verify https://github.com/viruslox/VLXframeflow.git
 cd "$MEDIAMTX_DIR/" || { echo "[ERR] $MEDIAMTX_DIR does not exist or wrong permissions"; exit 1; }
 if [ ! -f mediamtx ]; then
     echo "[INFO]: Downloading mediamtx"
-    DOWNLOAD_URL=$(wget -qO- https://api.github.com/repos/bluenviron/mediamtx/releases/latest | grep "browser_download_url.*linux_arm64v8.tar.gz" | cut -d '"' -f 4)
+    DOWNLOAD_URL=$(wget -qO- https://api.github.com/repos/bluenviron/mediamtx/releases/latest | grep "browser_download_url.*linux_arm64.tar.gz" | cut -d '"' -f 4)
     if [ -z "$DOWNLOAD_URL" ]; then
         echo "[ERR]: Can't download mediamtx"
     else
