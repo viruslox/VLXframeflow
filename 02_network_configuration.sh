@@ -238,7 +238,9 @@ RequiredForOnline=routable
 
 [Network]
 DHCP=yes
-DefaultRouteOnDevice=false
+Table=$((jj * 10))
+DefaultRouteOnDevice=true
+SourceRouting=yes
 
 [DHCPv4]
 RouteMetric=1$((jj * 10))
@@ -250,19 +252,18 @@ EOF
     cat <<EOF > "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
 #!/bin/sh
 if [ "\$IFACE" = "$iface" ]; then
-    IPV4_ADDR4=\$(ip -4 addr show dev "\$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
+    IPV4_ADDR4=\$(ip -4 addr show dev "\$IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
     if [ -n "\$IPV4_ADDR4" ]; then
         /sbin/ip mptcp endpoint add "\$IPV4_ADDR4" dev "\$IFACE" subflow
     fi
-    IPV6_ADDR6=\$(ip -6 addr show dev "\$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
+    IPV6_ADDR6=\$(ip -6 addr show dev "\$IFACE" | grep -oP '(?<=inet6\s)[\da-f:]+(?=\/)' | head -n1)
     if [ -n "\$IPV6_ADDR6" ]; then
         /sbin/ip -6 mptcp endpoint add "\$IPV6_ADDR6" dev "\$IFACE" subflow
     fi
 fi
 EOF
     # Add entries for both IPv4 and IPv6 tables to rt_tables
-    echo "$((jj * 10))    T_${iface}_v4" >> /etc/iproute2/rt_tables
-    echo "1$((jj * 10))    T_${iface}_v6" >> /etc/iproute2/rt_tables
+    echo "$((jj * 10))    T_${iface}" >> /etc/iproute2/rt_tables
 
     # Set permissions
     chmod 755 "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
