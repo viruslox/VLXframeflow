@@ -78,7 +78,7 @@ mkdir -p ~/.config/systemd/user/
 
 cd "$VLXsuite_DIR/" || { echo "[ERR]: $VLXsuite_DIR does not exist or wrong permissions"; exit 1; }
 git reset --hard
-git pull -f --no-commit --no-verify https://github.com/viruslox/VLXframeflow.git
+git pull --no-verify https://github.com/viruslox/VLXframeflow.git
 
 cd "$MEDIAMTX_DIR/" || { echo "[ERR] $MEDIAMTX_DIR does not exist or wrong permissions"; exit 1; }
 if [ ! -f mediamtx ]; then
