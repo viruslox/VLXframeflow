@@ -75,14 +75,27 @@ if ! grep -q "AUTH_TOKEN=" "$PROFILE_FILE"; then
 fi
 
 mkdir -p ~/.config/systemd/user/
-cd $VLXsuite_DIR/
+
+cd "$VLXsuite_DIR/" || { echo "[ERR]: $VLXsuite_DIR does not exist or wrong permissions"; exit 1; }
 git reset --hard
 git pull -f --no-commit --no-verify https://github.com/viruslox/VLXframeflow.git
 
-cd ${MEDIAMTX_DIR}/
-wget $(wget -qO- https://api.github.com/repos/bluenviron/mediamtx/releases/latest | grep "browser_download_url.*linux_arm64v8.tar.gz" | cut -d '"' -f 4)
+cd "$MEDIAMTX_DIR/" || { echo "[ERR] $MEDIAMTX_DIR does not exist or wrong permissions"; exit 1; }
+if [ ! -f mediamtx ]; then
+    echo "[INFO]: Downloading mediamtx"
+    DOWNLOAD_URL=$(wget -qO- https://api.github.com/repos/bluenviron/mediamtx/releases/latest | grep "browser_download_url.*linux_arm64v8.tar.gz" | cut -d '"' -f 4)
+    if [ -z "$DOWNLOAD_URL" ]; then
+        echo "[ERR]: Can't download mediamtx"
+    else
+        wget "$DOWNLOAD_URL"
+        tar zxf mediamtx_*.tar.gz && rm mediamtx_*.tar.gz
+    fi
+else
+    echo "[INFO]: Calling mediamtx self-upgrade..."
+    $MEDIAMTX_DIR/mediamtx --upgrade
+fi
 
-chmod 700 /opt/VLXframeflow/*.sh
+chmod 700 /opt/VLXframeflow/*.sh /opt/mediamtx/mediamtx
 
 echo "[OK]: Done!"
 
