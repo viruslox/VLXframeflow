@@ -31,6 +31,7 @@ case "$3" in
     rtsp)
         if [ -z "$RTSP_URL" ]; then
             echo "[ERR] RTSP_URL is not set in ~/.frameflow_profile"
+            echo "Usage: $0 {1|...|$ENABLED_DEVICES} {start|stop|status} {srt|rtsp}"
             exit 1
         else
             STRURL="$RTSP_URL"
@@ -40,6 +41,7 @@ case "$3" in
     srt | *)
         if [ -z "$SRT_URL" ]; then
             echo "[ERR] SRT_URL is not set in ~/.frameflow_profile"
+            echo "Usage: $0 {1|...|$ENABLED_DEVICES} {start|stop|status} {srt|rtsp}"
             exit 1
         else
             STRURL="$SRT_URL"
