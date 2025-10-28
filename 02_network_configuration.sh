@@ -16,10 +16,10 @@ if ! sysctl net.mptcp.enabled &> /dev/null; then
 elif [ "$(sysctl -n net.mptcp.enabled)" -eq 0 ]; then
     echo "[WARN] MPTCP is not enabled. Enabling it now."
     sysctl -w net.mptcp.enabled=1
-	sysctl -w net.mptcp.checksum_enabled=1
+    sysctl -w net.mptcp.checksum_enabled=1
     if [ ! -e /etc/sysctl.d/98-mptcp.conf ]; then
         echo "net.mptcp.enabled=1" > /etc/sysctl.d/98-mptcp.conf
-		echo "net.mptcp.checksum_enabled=1" >> /etc/sysctl.d/98-mptcp.conf
+        echo "net.mptcp.checksum_enabled=1" >> /etc/sysctl.d/98-mptcp.conf
     fi
     echo "[OK] MPTCP enabled."
 else
@@ -38,7 +38,7 @@ fi
 NORM_PROFILE="/etc/systemd/network/profiles/normal"
 AP_PROFILE="/etc/systemd/network/profiles/ap-bonding"
 DISPATCHER_DIR="/etc/networkd-dispatcher/routable.d"
-mkdir -p "$NORM_PROFILE" "$AP_PROFILE" "$DISPATCHER_DIR"
+mkdir -p "$NORM_PROFILE" "$AP_PROFILE" "$DISPATCHER_DIR" /etc/iproute2
 
 # Configuring Firewall (UFW)
 ufw allow 22/tcp
@@ -98,8 +98,8 @@ if [ ${#INTERFACES[@]} -eq 0 ]; then
     echo "[WARN] No wireless network interface found. Skipping Wi-Fi configuration."
 else
     for iface in "${INTERFACES[@]}"; do
-		# wi-fi as client
-		cat <<EOF | tee "$NORM_PROFILE/20-$iface-managed.network" "$AP_PROFILE/20-$iface-managed.network" > /dev/null
+        # wi-fi as client
+        cat <<EOF | tee "$NORM_PROFILE/20-$iface-managed.network" "$AP_PROFILE/20-$iface-managed.network" > /dev/null
 [Match]
 Name=$iface
 
@@ -120,34 +120,34 @@ MPTCPSubflow=no
 WiFiPowerSave=disable
 EOF
 
-		WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
+        WPA_CONF="/etc/wpa_supplicant/wpa_supplicant-$iface.conf"
 ##            if [ ! -f "$WPA_CONF" ]; then
 ##                # These lines requires more testing
 ##                echo "ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev" > "$WPA_CONF"
 ##                echo "update_config=1" >> "$WPA_CONF"
 ##            fi
-		# Grab wifi networks and pass from network-manager, if anything still there
-		if [ -d /etc/NetworkManager/system-connections/ ]; then
-			for knownwlans in /etc/NetworkManager/system-connections/*; do
-			if grep -q 'type=wifi' "$knownwlans"; then
-				SSID=$(grep -oP 'ssid=\K.*' "$knownwlans")
-				PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
+        # Grab wifi networks and pass from network-manager, if anything still there
+        if [ -d /etc/NetworkManager/system-connections/ ]; then
+            for knownwlans in /etc/NetworkManager/system-connections/*; do
+            if grep -q 'type=wifi' "$knownwlans"; then
+                SSID=$(grep -oP 'ssid=\K.*' "$knownwlans")
+                PSK=$(grep -oP 'psk=\K.*' "$knownwlans")
 
-				if [ -n "$SSID" ] && [ -n "$PSK" ] && ! grep -q -F "ssid=\"$SSID\"" "$WPA_CONF"; then
-					echo "[INFO] Adding new network '$SSID' to $WPA_CONF"
-					cat <<EONET >> "$WPA_CONF"
+                if [ -n "$SSID" ] && [ -n "$PSK" ] && ! grep -q -F "ssid=\"$SSID\"" "$WPA_CONF"; then
+                    echo "[INFO] Adding new network '$SSID' to $WPA_CONF"
+                    cat <<EONET >> "$WPA_CONF"
 network={
     ssid="$SSID"
     psk="$PSK"
 }
 EONET
-				fi
-			fi
-			done
-		fi
-		systemctl enable "wpa_supplicant@$iface.service"
+                fi
+            fi
+            done
+        fi
+        systemctl enable "wpa_supplicant@$iface.service"
 
-		# the first wifi interface can be enabled as access point
+        # the first wifi interface can be enabled as access point
         if [[ "$iface" == "${INTERFACES[0]}" ]]; then
             ufw allow in on "$iface" to any port 546 proto udp # DHCPv6 Client
             ufw allow in on "$iface" to any port 547 proto udp # DHCPv6 Server
@@ -155,7 +155,7 @@ EONET
             ufw allow in on "$iface" to any port 53 # DNS
 
             # AP Profile (with IPv6 support)
-			rm $AP_PROFILE/20-$iface-managed.network
+            rm $AP_PROFILE/20-$iface-managed.network
             cat <<EOF > "$AP_PROFILE/40-$iface-ap.network"
 [Match]
 Name=$iface
@@ -222,7 +222,8 @@ WantedBy=multi-user.target
 EOF
 
 ## for each ethernet/usb/tether interface create profiles
-jj=0
+jj=1
+>/etc/iproute2/rt_tables
 for iface in $(ls /sys/class/net); do
     if [ "$iface" == "lo" ] || [[ "$iface" == *bond* ]] || [ -d "/sys/class/net/$iface/wireless" ]; then
         continue
@@ -237,24 +238,56 @@ RequiredForOnline=routable
 
 [Network]
 DHCP=yes
+DefaultRouteOnDevice=false
 
 [DHCPv4]
-RouteMetric=$((100 + jj))
+#RouteMetric=$((100 + jj))
+UseDomains=true
 
 [IPv6AcceptRA]
-RouteMetric=$((100 + jj))
+#RouteMetric=$((100 + jj))
+UseDomains=true
 EOF
 
     cat <<EOF > "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
 #!/bin/sh
-if [ "\$IFACE" = "$iface" ]; then
-    IP_ADDR=\$(ip -4 addr show dev "\$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
-    if [ -n "\$IP_ADDR" ]; then
-        /sbin/ip mptcp endpoint add "\$IP_ADDR" dev "\$IFACE" subflow
-    fi
-fi
-EOF
+if [ "\$IFACE" != "$iface" ]; then exit 0 ; fi
 
+# Set table IDs
+TABLE_ID_V4=$((jj * 10))
+TABLE_ID_V6=1$((jj * 10))
+
+# IPv4
+IP_ADDR_V4=\$(ip -4 addr show dev "\$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
+GATEWAY_V4=\$(ip -4 route show dev "\$IFACE" | grep -oP 'default via \\K[\\d.]+')
+# IPv6
+IP_ADDR_V6=\$(ip -6 addr show dev "\$IFACE" scope global | grep -oP '(?<=inet6\\s)[\\da-f:]+(?=/\d+)')
+GATEWAY_V6=\$(ip -6 route show dev "\$IFACE" | grep -oP 'default via \\K[\\da-f:]+')
+
+if [ -n "\$IP_ADDR_V4" ] && [ -n "\$GATEWAY_V4" ]; then
+    /sbin/ip mptcp endpoint add "\$IP_ADDR_V4" dev "\$IFACE" subflow
+    /sbin/ip route add default via "\$GATEWAY_V4" dev "\$IFACE" table "\$TABLE_ID_V4"
+    /sbin/ip rule del from "\$IP_ADDR_V4" table "\$TABLE_ID_V4" 2>/dev/null
+    /sbin/ip rule add from "\$IP_ADDR_V4" table "\$TABLE_ID_V4"
+fi
+
+if [ -n "\$IP_ADDR_V6" ] && [ -n "\$GATEWAY_V6" ]; then
+    /sbin/ip -6 mptcp endpoint add "\$IP_ADDR_V6" dev "\$IFACE" subflow
+    /sbin/ip -6 route add default via "\$GATEWAY_V6" dev "\$IFACE" table "\$TABLE_ID_V6"
+    /sbin/ip -6 rule del from "\$IP_ADDR_V6" table "\$TABLE_ID_V6" 2>/dev/null
+    /sbin/ip -6 rule add from "\$IP_ADDR_V6" table "\$TABLE_ID_V6"
+fi
+
+# Flush the routing cache
+/sbin/ip -4 route flush cache
+/sbin/ip -6 route flush cache
+
+EOF
+    # Add entries for both IPv4 and IPv6 tables to rt_tables
+    echo "$((jj * 10))    T_${iface}_v4" >> /etc/iproute2/rt_tables
+    echo "1$((jj * 10))    T_${iface}_v6" >> /etc/iproute2/rt_tables
+
+    # Set permissions
     chmod 755 "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
     ((jj++))
 done
