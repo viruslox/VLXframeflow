@@ -241,47 +241,24 @@ DHCP=yes
 DefaultRouteOnDevice=false
 
 [DHCPv4]
-#RouteMetric=$((100 + jj))
-UseDomains=true
+RouteMetric=1$((jj * 10))
 
 [IPv6AcceptRA]
-#RouteMetric=$((100 + jj))
-UseDomains=true
+RouteMetric=1$((jj * 10))
 EOF
 
     cat <<EOF > "$DISPATCHER_DIR/30-$iface-mptcp-subflow.sh"
 #!/bin/sh
-if [ "\$IFACE" != "$iface" ]; then exit 0 ; fi
-
-# Set table IDs
-TABLE_ID_V4=$((jj * 10))
-TABLE_ID_V6=1$((jj * 10))
-
-# IPv4
-IP_ADDR_V4=\$(ip -4 addr show dev "\$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
-GATEWAY_V4=\$(ip -4 route show dev "\$IFACE" | grep -oP 'default via \\K[\\d.]+')
-# IPv6
-IP_ADDR_V6=\$(ip -6 addr show dev "\$IFACE" scope global | grep -oP '(?<=inet6\\s)[\\da-f:]+(?=/\d+)')
-GATEWAY_V6=\$(ip -6 route show dev "\$IFACE" | grep -oP 'default via \\K[\\da-f:]+')
-
-if [ -n "\$IP_ADDR_V4" ] && [ -n "\$GATEWAY_V4" ]; then
-    /sbin/ip mptcp endpoint add "\$IP_ADDR_V4" dev "\$IFACE" subflow
-    /sbin/ip route add default via "\$GATEWAY_V4" dev "\$IFACE" table "\$TABLE_ID_V4"
-    /sbin/ip rule del from "\$IP_ADDR_V4" table "\$TABLE_ID_V4" 2>/dev/null
-    /sbin/ip rule add from "\$IP_ADDR_V4" table "\$TABLE_ID_V4"
+if [ "\$IFACE" = "$iface" ]; then
+    IPV4_ADDR4=\$(ip -4 addr show dev "\$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
+    if [ -n "\$IPV4_ADDR4" ]; then
+        /sbin/ip mptcp endpoint add "\$IPV4_ADDR4" dev "\$IFACE" subflow
+    fi
+    IPV6_ADDR6=\$(ip -6 addr show dev "\$IFACE" | grep -oP '(?<=inet\\s)\\d+(\\.\\d+){3}')
+    if [ -n "\$IPV6_ADDR6" ]; then
+        /sbin/ip -6 mptcp endpoint add "\$IPV6_ADDR6" dev "\$IFACE" subflow
+    fi
 fi
-
-if [ -n "\$IP_ADDR_V6" ] && [ -n "\$GATEWAY_V6" ]; then
-    /sbin/ip -6 mptcp endpoint add "\$IP_ADDR_V6" dev "\$IFACE" subflow
-    /sbin/ip -6 route add default via "\$GATEWAY_V6" dev "\$IFACE" table "\$TABLE_ID_V6"
-    /sbin/ip -6 rule del from "\$IP_ADDR_V6" table "\$TABLE_ID_V6" 2>/dev/null
-    /sbin/ip -6 rule add from "\$IP_ADDR_V6" table "\$TABLE_ID_V6"
-fi
-
-# Flush the routing cache
-/sbin/ip -4 route flush cache
-/sbin/ip -6 route flush cache
-
 EOF
     # Add entries for both IPv4 and IPv6 tables to rt_tables
     echo "$((jj * 10))    T_${iface}_v4" >> /etc/iproute2/rt_tables
