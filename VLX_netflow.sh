@@ -43,6 +43,8 @@ fi
 
 systemctl restart systemd-resolved
 systemctl restart networkd-dispatcher
+/sbin/ip -4 route flush cache
+/sbin/ip -6 route flush cache
 
 echo "$PROFILE_NAME Enabled"
 
