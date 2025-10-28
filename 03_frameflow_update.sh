@@ -6,6 +6,7 @@ GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
 # IF You wish to change PATH, be sure that You have write rights there."
 VLXsuite_DIR="/opt/VLXframeflow"
 VLXlogs_DIR="/opt/VLXflowlogs"
+MEDIAMTX_DIR="/opt/mediamtx"
 PROFILE_FILE="$HOME/.frameflow_profile"
 
 dedicated_user=$(ls -ld /opt/VLXframeflow | awk '{print $3}')
@@ -31,6 +32,12 @@ fi
 if ! grep -q "VLXlogs_DIR=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'VLXlogs_DIR' to profile."
     echo -e "VLXlogs_DIR=\"${VLXlogs_DIR}\"" >> "$PROFILE_FILE"
+fi
+
+# Check for MEDIAMTX_DIR
+if ! grep -q "MEDIAMTX_DIR=" "$PROFILE_FILE"; then
+    echo "[INFO] Adding 'MEDIAMTX_DIR' to profile."
+    echo -e "MEDIAMTX_DIR=\"${MEDIAMTX_DIR}\"" >> "$PROFILE_FILE"
 fi
 
 if ! grep -q "ENABLED_DEVICES=" "$PROFILE_FILE"; then
@@ -71,6 +78,9 @@ mkdir -p ~/.config/systemd/user/
 cd $VLXsuite_DIR/
 git reset --hard
 git pull -f --no-commit --no-verify https://github.com/viruslox/VLXframeflow.git
+
+cd ${MEDIAMTX_DIR}/
+wget $(wget -qO- https://api.github.com/repos/bluenviron/mediamtx/releases/latest | grep "browser_download_url.*linux_arm64v8.tar.gz" | cut -d '"' -f 4)
 
 chmod 700 /opt/VLXframeflow/*.sh
 
