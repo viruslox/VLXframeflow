@@ -6,8 +6,8 @@ if [ "$(id -u)" -eq 0 ]; then
   echo "Never, never use root when not necessaire."
   exit 1
 elif [ "$USER" != "$dedicated_user" ]; then
-	echo "[ERR] Only $dedicated_user can correctly execute this script."
-	exit 1
+    echo "[ERR] Only $dedicated_user can correctly execute this script."
+    exit 1
 fi
 
 if [ -f ~/.frameflow_profile ]; then
@@ -27,16 +27,32 @@ if [[ "$ENABLED_DEVICES" -eq 0 ]]; then
     exit 1
 fi
 
-if [ -z "$RTSP_URL" ]; then
-    echo "[ERR] RTSP_URL is not set in ~/.frameflow_profile"
-    exit 1
-fi
+case "$3" in
+    rtsp)
+        if [ -z "$RTSP_URL" ]; then
+            echo "[ERR] RTSP_URL is not set in ~/.frameflow_profile"
+            exit 1
+        else
+            STRURL="$RTSP_URL"
+            STRMODE="rtsp"
+        fi
+        ;;
+    srt | *)
+        if [ -z "$SRT_URL" ]; then
+            echo "[ERR] SRT_URL is not set in ~/.frameflow_profile"
+            exit 1
+        else
+            STRURL="$SRT_URL"
+            STRMODE="mpegts"
+        fi
+        ;;
+esac
+
 if [ -z "$AUDIODEV" ]; then
-    echo "[ERR] AUDIODEV is not set in ~/.frameflow_profile"
-    exit 1
-else
-    AUDIODEV_HW=$(arecord -l | grep -m1 "card .*\[${AUDIODEV}\]" | sed -n 's/card \([0-9]\+\): .*/\1/p')
+    echo "[ERR] AUDIODEV is not set in ~/.frameflow_profile, looking for any USB audio source"
+    AUDIODEV='card.*USB'
 fi
+AUDIODEV_HW=$(arecord -l | grep -m1 "card .*\[${AUDIODEV}\]" | sed -n 's/card \([0-9]\+\): .*/\1/p')
 
 if ! [[ "$1" =~ ^[0-9]+$ ]]; then
     echo "[ERR] Sorry, integers only"
@@ -56,35 +72,37 @@ MPTCPIZE_PATH=$(which mptcpize)
 if [ -z "$FFMPEG_PATH" ]; then echo "[ERR] ffmpeg executable not found in PATH"; exit 1; fi
 if [ -z "$MPTCPIZE_PATH" ]; then echo "[ERR] mptcpize executable not found in PATH"; exit 1; fi
 
+
+
 start() {
-	local CAMERA_ID="$1"
+    local CAMERA_ID="$1"
     if [ -f "$PID_FILE" ]; then
         echo "Process for camera $CAMERA_ID seems to be already running. Check with 'status'."
         exit 1
     fi
 
-	local CAMERA_INDEX=$((CAMERA_ID - 1))
-	mapfile -t videodevlist < <(v4l2-ctl --list-devices | grep -A1 'usb' | grep --line-buffered '/dev/video' | sed 's/^[ \t]*//')
+    local CAMERA_INDEX=$((CAMERA_ID - 1))
+    mapfile -t videodevlist < <(v4l2-ctl --list-devices | grep -A1 'usb' | grep --line-buffered '/dev/video' | sed 's/^[ \t]*//')
     
-	if [ ${#videodevlist[@]} -eq 0 ]; then
-		echo "[ERR] No '/dev/video*' devices found."
-		exit 1
-	fi
-	echo "Found input video devices: ${videodevlist[@]}"
+    if [ ${#videodevlist[@]} -eq 0 ]; then
+        echo "[ERR] No '/dev/video*' devices found."
+        exit 1
+    fi
+    echo "Found input video devices: ${videodevlist[@]}"
 
     local VIDEO_DEVICE="${videodevlist[$CAMERA_INDEX]}"
-	if [ -z "$VIDEO_DEVICE" ]; then
-		echo "[ERR] Video device for camera $CAMERA_ID (index $CAMERA_INDEX) not found!"
-		exit 1
-	fi
+    if [ -z "$VIDEO_DEVICE" ]; then
+        echo "[ERR] Video device for camera $CAMERA_ID (index $CAMERA_INDEX) not found!"
+        exit 1
+    fi
 
-	local -a FFMPEG_CMD_ARRAY=(
-		"$MPTCPIZE_PATH" "run" "$FFMPEG_PATH"
-		"-f" "v4l2"
-		"-framerate" "30"
-		"-video_size" "1920x1080"
-		"-i" "$VIDEO_DEVICE"
-	)
+    local -a FFMPEG_CMD_ARRAY=(
+        "$MPTCPIZE_PATH" "run" "$FFMPEG_PATH"
+        "-f" "v4l2"
+        "-framerate" "30"
+        "-video_size" "1920x1080"
+        "-i" "$VIDEO_DEVICE"
+    )
     
     if [[ "$CAMERA_INDEX" -eq 0 ]] && [[ -n "${AUDIODEV_HW}" ]]; then
         echo "Adding audio input from hw:CARD=${AUDIODEV_HW}"
@@ -92,17 +110,16 @@ start() {
         FFMPEG_CMD_ARRAY+=("-c:a" "aac" "-b:a" "128k")
     fi
     
-	FFMPEG_CMD_ARRAY+=(
-		"-c:v" "libx264"
-		"-pix_fmt" "yuv420p"
-		"-preset" "superfast"
-		"-b:v" "600k"
-		"-rw_timeout" "10000000"
-		"-f" "rtsp" "${RTSP_URL}_${CAMERA_ID}"
-	)
+    FFMPEG_CMD_ARRAY+=(
+        "-c:v" "libx264"
+        "-preset" "ultrafast"
+        "-tune" "zerolatency"
+        "-f" "${STRMODE}"
+        "${STRURL}_${CAMERA_ID}"
+    )
 
-	echo "Launching FFmpeg in background..."
-	echo "Executing command: ${FFMPEG_CMD_ARRAY[@]}" 
+    echo "Launching FFmpeg in background..."
+    echo "Executing command: ${FFMPEG_CMD_ARRAY[@]}"
 
     "${FFMPEG_CMD_ARRAY[@]}" >/dev/null 2>"$LOG_FILE" &
     echo $! > "$PID_FILE"
@@ -114,7 +131,7 @@ start() {
 stop() {
     if [ ! -f "$PID_FILE" ]; then
         echo "[INFO] PID file not found. Nothing to stop."
-	    return
+        return
     fi
     local PID=$(cat "$PID_FILE")
     echo "Killing FFmpeg process with PID $PID..."
@@ -136,16 +153,16 @@ status() {
         echo "Check logs: tail -f $LOG_FILE"
     else
         echo "[WARN] PID file found but process does not exist, removing stale PID file."
-	    rm "$PID_FILE"
+        rm "$PID_FILE"
     fi
 }
 
 case "$2" in
     start)
-	    #status # Calling status here is redundant, start() already checks the PID file
+        status
         start "$1"
-	    sleep 1
-	    status
+        sleep 1
+        status
         ;;
     stop)
         stop
@@ -154,7 +171,7 @@ case "$2" in
         status
         ;;
     *)
-        echo "Usage: $0 {1|...|$ENABLED_DEVICES} {start|stop|status}"
+        echo "Usage: $0 {1|...|$ENABLED_DEVICES} {start|stop|status} {srt|rtsp}"
         exit 1
         ;;
 esac
