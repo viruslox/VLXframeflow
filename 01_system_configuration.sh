@@ -9,6 +9,7 @@ fi
 
 VLXsuite_DIR="/opt/VLXframeflow"
 VLXlogs_DIR="/opt/VLXflowlogs"
+MEDIAMTX_DIR="/opt/mediamtx"
 CRON_script="$VLXsuite_DIR/04_maintenance.sh"
 CRON_JOB="@reboot $CRON_script start 2>&1"
 GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
@@ -176,8 +177,8 @@ else
 fi
 usermod -a -G crontab,dialout,tty,video,audio,plugdev,netdev,i2c,bluetooth $answnewuser
 loginctl enable-linger $answnewuser
-mkdir -p $VLXsuite_DIR $VLXlogs_DIR
-chown -Rf $answnewuser:$answnewuser $VLXsuite_DIR $VLXlogs_DIR
+mkdir -p $VLXsuite_DIR $VLXlogs_DIR $MEDIAMTX_DIR
+chown -Rf $answnewuser:$answnewuser $VLXsuite_DIR $VLXlogs_DIR $MEDIAMTX_DIR
 
 echo "sysctl kernel.dmesg_restrict=0" > /etc/sysctl.d/99-disable-dmesg-restrict.conf
 sysctl --system
