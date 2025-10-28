@@ -149,10 +149,11 @@ EONET
 
         # the first wifi interface can be enabled as access point
         if [[ "$iface" == "${INTERFACES[0]}" ]]; then
-            ufw allow in on "$iface" to any port 546 proto udp # DHCPv6 Client
-            ufw allow in on "$iface" to any port 547 proto udp # DHCPv6 Server
-            ufw allow in on "$iface" from any port 68 to any port 67 proto udp # DHCPv4
-            ufw allow in on "$iface" to any port 53 # DNS
+            ufw allow in on "$iface" to any port 546 proto udp comment "DHCPv6 Client"
+            ufw allow in on "$iface" to any port 547 proto udp comment "DHCPv6 Server"
+            ufw allow in on "$iface" from any port 68 to any port 67 proto udp comment "DHCPv4"
+            ufw allow in on "$iface" to any port 53 comment "DNS"
+            ufw allow in on "$iface" to any port 1935 proto tcp comment "RTMP IN"
 
             # AP Profile (with IPv6 support)
             rm $AP_PROFILE/20-$iface-managed.network
