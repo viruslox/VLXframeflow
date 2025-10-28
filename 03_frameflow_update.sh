@@ -44,7 +44,7 @@ if ! grep -q "RTSP_URL=" "$PROFILE_FILE"; then
     echo -e "RTSP_URL=\"#rtsps://<host>:<port>/<path>/<key>\"" >> "$PROFILE_FILE"
 fi
 
-if ! grep -q "RTSP_URL=" "$PROFILE_FILE"; then
+if ! grep -q "SRT_URL=" "$PROFILE_FILE"; then
     echo "[INFO] Adding 'SRT_URL' to profile."
     echo -e "SRT_URL=\"#srt://<host>:<port>?streamid=publish:<path>/<key>\"" >> "$PROFILE_FILE"
 fi
