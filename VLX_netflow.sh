@@ -41,6 +41,9 @@ elif [ "$PROFILE_NAME" = "ap-bonding" ]; then
     systemctl start hostapd
 fi
 
+systemctl restart systemd-resolved
+systemctl restart networkd-dispatcher
+
 echo "$PROFILE_NAME Enabled"
 
 exit 0
