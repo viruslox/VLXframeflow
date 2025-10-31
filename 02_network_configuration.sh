@@ -7,7 +7,7 @@ fi
 
 apt-get update
 systemctl disable NetworkManager
-apt-get -y install ufw mptcpd hostapd systemd-timesyncd networkd-dispatcher
+apt-get -y install ufw mptcpd hostapd systemd-timesyncd networkd-dispatcher wpasupplicant
 
 # Enable MPTCP
 if ! sysctl net.mptcp.enabled &> /dev/null; then
