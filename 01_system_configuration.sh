@@ -17,19 +17,8 @@ GITHUB_URL="https://github.com/viruslox/VLXframeflow.git"
 systemctl enable --now ssh
 systemctl unmask hostapd 
 
-mkdir -p /etc/systemd/system/getty@.service.d/
-getty_file="/etc/systemd/system/getty@.service.d/override.conf"
-GETTY_OVERRIDE_CONF="[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --noreset --noclear --issue-file=/etc/issue:/etc/issue.d:/run/issue.d:/usr/lib/issue.d - %I \${TERM}
-ImportCredential=tty.virtual.%I.agetty.*:agetty.
-ImportCredential=tty.virtual.%I.login.*:login.
-ImportCredential=agetty.*
-ImportCredential=login.*
-ImportCredential=shell.*"
-
-echo "$GETTY_OVERRIDE_CONF" > "$getty_file"
-echo "[INFO]: Applying systemd override for getty.service..."
+systemctl set-default multi-user.target
+apt -y install --reinstall systemd
 systemctl daemon-reload
 
 echo "We're about to reconfigure the whole OS including uninstall Desktop apps and graphical GUI - You can skip this step"
